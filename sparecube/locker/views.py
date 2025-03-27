@@ -182,8 +182,8 @@ class LocationAPIView(APIView):
         
         #we insert the data into the database
         try:
-            cursor.execute('''insert into Localita (name, road, city, civicnumber, postalcode, id_azienda)
-                              values(?, ?, ?, ?, ?, ?)''', loc.name, loc.road, loc.city, loc.civicnumber, loc.postalcode, loc.id_azienda)
+            cursor.execute('''insert into Localita (name, road, city, civicnumber, postalcode, id_azienda, lat, lng)
+                              values(?, ?, ?, ?, ?, ?, ?, ?)''', loc.name, loc.road, loc.city, loc.civicnumber, loc.postalcode, loc.id_azienda, loc.lat, loc.lng)
             
             cursor.commit()
             cursor.close()

@@ -42,6 +42,14 @@ class Location():
              geometry['lng'] = self.lng
 
              data['geometry'] = geometry
+        else:
+             geometry = {}
+
+             geometry['lat'] = 41.0
+             geometry['lng'] = 14.0
+
+             data['geometry'] = geometry
+
 
         return data
 
