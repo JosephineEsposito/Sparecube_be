@@ -13,7 +13,7 @@ class Drawer():
             self.height     = None
             self.depth      = None
             self.status     = None
-            self.id_locker  = None
+            self.id_torre  = None
         else:
             # initialize attributes with values from args dictionary
             self.id         = args.get('id')
@@ -21,7 +21,7 @@ class Drawer():
             self.height     = args.get('height')
             self.depth      = args.get('depth')
             self.status     = args.get('status')
-            self.id_locker  = args.get('id_locker')
+            self.id_torre   = args.get('id_torre')
     
 
     def json(self):
@@ -32,7 +32,7 @@ class Drawer():
         if self.height      : data['height']        = self.height
         if self.depth       : data['depth']         = self.depth
         if self.status      : data['status']        = self.status
-        if self.id_locker   : data['id_locker']     = self.id_locker
+        if self.id_torre    : data['id_torre']      = self.id_torre
 
         return data
     
@@ -42,7 +42,7 @@ class Drawer():
         self.height     = None
         self.depth      = None
         self.status     = None
-        self.id_locker  = None
+        self.id_torre   = None
 
     def base(self):
         return {
@@ -50,7 +50,7 @@ class Drawer():
             "height" : 0,
             "depth" : 0,
             "status" : "",
-            "id_locker" : 0
+            "id_torre" : 0
         }
     
     def query(self, o):
@@ -64,8 +64,8 @@ class Drawer():
             data.append(f"depth = {o['depth']}")
         if "status" in o:
             data.append(f"status = \'{o['status']}\'")
-        if "id_locker" in o:
-            data.append(f"id_locker = {o['id_locker']}")
+        if "id_torre" in o:
+            data.append(f"id_torre = {o['id_torre']}")
 
         tmp = []
         for i in range(len(data)):

@@ -15,6 +15,7 @@ class Booking():
             self.ticket                     = None
             self.id_utente                  = None
             self.id_locker                  = None
+            self.id_torre                   = None
             self.id_cassetto                = None
             self.id_causaleprenotazione     = None
         else:
@@ -25,6 +26,7 @@ class Booking():
             self.ticket                     = args.get('ticket')
             self.id_utente                  = args.get('id_utente')
             self.id_locker                  = args.get('id_locker')
+            self.id_torre                   = args.get('id_torre')
             self.id_cassetto                = args.get('id_cassetto')
             self.id_causaleprenotazione     = args.get('id_causaleprenotazione')
     
@@ -37,6 +39,7 @@ class Booking():
         if self.ticket                  : data['ticket']                        = self.ticket
         if self.id_utente               : data['id_utente']                     = self.id_utente
         if self.id_locker               : data['id_locker']                     = self.id_locker
+        if self.id_torre                : data['id_torre']                      = self.id_torre
         if self.id_cassetto             : data['id_cassetto']                   = self.id_cassetto
         if self.id_causaleprenotazione  : data['id_causaleprenotazione']        = self.id_causaleprenotazione
 
@@ -49,6 +52,7 @@ class Booking():
         self.ticket                     = None
         self.id_utente                  = None
         self.id_locker                  = None
+        self.id_torre                   = None
         self.id_cassetto                = None
         self.id_causaleprenotazione     = None
 
@@ -60,6 +64,7 @@ class Booking():
             "ticket" : "",
             "id_utente" : 0,
             "id_locker" : 0,
+            "id_torre" : 0,
             "id_cassetto" : 0,
             "id_causaleprenotazione" : 0,
         }
@@ -76,6 +81,8 @@ class Booking():
             data.append(f"id_utente = {o["id_utente"]}")
         if "id_locker" in o:
             data.append(f"id_locker = {o["id_locker"]}")
+        if "id_torre" in o:
+            data.append(f"id_torre = {o["id_torre"]}")
         if "id_cassetto" in o:
             data.append(f"id_cassetto = {o["id_cassetto"]}")
         if "id_causaleprenotazione" in o:
@@ -105,6 +112,8 @@ class Booking():
         else                            : data['id_utente']                     = None
         if self.id_locker               : data['id_locker']                     = self.id_locker
         else                            : data['id_locker']                     = None
+        if self.id_torre                : data['id_torre']                      = self.id_torre
+        else                            : data['id_torre']                      = None
         if self.id_cassetto             : data['id_cassetto']                   = self.id_cassetto
         else                            : data['id_cassetto']                   = None
         if self.id_causaleprenotazione  : data['id_causaleprenotazione']        = self.id_causaleprenotazione

@@ -8,6 +8,7 @@ from .. import crypt as c
 class Location():
     def __init__(self, args = None):
         if args is None:
+            self.id             = None
             self.name           = None
             self.road           = None
             self.city           = None
@@ -16,7 +17,9 @@ class Location():
             self.id_azienda     = None
             self.lat            = None
             self.lng            = None
+            self.lockers        = []
         else:
+            self.id             = args.get("id")
             self.name           = args.get("name")
             self.road           = args.get("road")
             self.city           = args.get("city")
@@ -25,15 +28,20 @@ class Location():
             self.id_azienda     = args.get("id_azienda")
             self.lat            = args.get("lat")
             self.lng            = args.get("lng")
+            self.lockers        = args.get("lockers", [])
 
     def json(self):
         data = {}
+        if self.id:             data['id']          = self.id
         if self.name:           data['name']        = self.name
         if self.road:           data['road']        = self.road
         if self.city:           data['city']        = self.city
         if self.civicnumber:    data['civicnumber'] = self.civicnumber
         if self.postalcode:     data['postalcode']  = self.postalcode
         if self.id_azienda:     data['id_azienda']  = self.id_azienda
+
+        if self.lockers:
+            data['lockers'] = self.lockers
 
         if self.lat and self.lng:
              geometry = {}
@@ -68,6 +76,8 @@ class Location():
     def query(self, o):
         data = []
 
+        if "id" in o:
+            data.append(f"id = {o['id']}")
         if "name" in o:
             data.append(f"name = \'{o['name']}\'")
         if "road" in o:

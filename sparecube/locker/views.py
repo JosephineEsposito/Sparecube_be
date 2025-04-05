@@ -20,6 +20,8 @@ from utils import database as db
 from utils.data import location
 # for Locker
 from utils.data import locker
+# for Torre
+from utils.data import tower 
 # for Cassetto
 from utils.data import drawer
 # for Prenotazione
@@ -246,7 +248,7 @@ class LocationsAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user["account_type"] != 'ADMIN': # solo per amministratori
+        if user["account_type"] == 'USER': # solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -261,19 +263,59 @@ class LocationsAPIView(APIView):
         #query
         try:
             locations = []
-            cursor.execute("select * from Localita")
-            res = cursor.fetchall()
 
-            if res:
-                cols = [cols[0] for cols in cursor.description]
-                for row in res:
-                    LOC = location.Location(dict(zip(cols, row)))
-                    locations.append(LOC.json())
+            if user['account_type'] == 'OPERATOR':
+                cursor.execute("SELECT id, name FROM Localita")
+                res = cursor.fetchall()
+
+                if res:
+                    cols = [col[0] for col in cursor.description]
+                    for row in res:
+                        LOC = location.Location(dict(zip(cols, row)))
+                        locations.append(LOC.json())
+
+            else:
+                # Amministratore: includi i locker
+                cursor.execute("select L.*, LO.id as id_locker from Localita as L left join Locker as LO on L.id = LO.localita")
+                res = cursor.fetchall()
+
+                if res:
+                    cols = [col[0] for col in cursor.description]
+                    
+                    # Raggruppa per ID località
+                    grouped = {}
+                    for row in res:
+                        row_dict = dict(zip(cols, row))
+                        loc_id = row_dict['id']
+
+                        if loc_id not in grouped:
+                            grouped[loc_id] = {
+                                'id': row_dict['id'],
+                                'name': row_dict['name'],
+                                'road': row_dict['road'],
+                                'city': row_dict['city'],
+                                'civicnumber': row_dict.get('civicnumber'),
+                                'postalcode': row_dict['postalcode'],
+                                'id_azienda': row_dict.get('id_azienda'),
+                                'lat': row_dict.get('lat'),
+                                'lng': row_dict.get('lng'),
+                                'lockers': []
+                            }
+
+                        if row_dict['id_locker'] is not None:
+                            grouped[loc_id]['lockers'].append(row_dict['id_locker'])
+
+
+                    # Crea oggetti Location
+                    for loc_data in grouped.values():
+                        LOC = location.Location(loc_data)
+                        locations.append(LOC.json())
+
             cursor.close()
             connection['connection'].close()
 
             RES.setData(locations)
-        
+
         except pyodbc.Error as err:
             RES.dbError()
             RES.setErrors(str(err))
@@ -289,7 +331,6 @@ class LocationsAPIView(APIView):
 """
 Class to manage Locker
 GET     - single (id) locker info
-GET     - all locker infos
 PUT     - update single locker info
 DELETE  - delete (id) locker info
 """
@@ -317,10 +358,14 @@ class LockerAPIView(APIView):
             if res:
                 cols = [cols[0] for cols in cursor.description]
                 LOC = locker.Locker(dict(zip(cols, res)))
+                RES.setData(LOC.json())
+                RES.setResult(0)
+            else:
+                RES.setData({})
+                RES.setResult(-1)
             cursor.close()
             connection['connection'].close()
 
-            RES.setData(LOC.json())
 
         except pyodbc.Error as err:
             RES.dbError()
@@ -510,7 +555,7 @@ class LockersAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user["account_type"] != 'ADMIN': # solo per amministratori
+        if user["account_type"] == 'USER': # solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -525,7 +570,10 @@ class LockersAPIView(APIView):
         #query
         try:
             lockers = []
-            cursor.execute("select * from Locker")
+            if user['account_type'] == 'OPERATOR':
+                cursor.execute("select id, localita from Locker")
+            else:
+                cursor.execute("select L.id, LO.name as localita, L.id_azienda, L.status from Locker as L, Localita as LO where L.localita = LO.id")
             res = cursor.fetchall()
 
             if res:
@@ -550,11 +598,156 @@ class LockersAPIView(APIView):
 
 
 # ====================.====================.====================.====================.==================== #
+#region | Torre
+"""
+Class to manage Torre
+GET     - single (id) tower info
+PUT     - update single tower info
+DELETE  - delete (id) tower info
+"""
+class TowerAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+    
+    def get(self, request, id):
+        # ritorna le informazioni di una torre
+        RES.clean()
+
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(str(connection['connection']))
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #query
+        try:
+            cursor.execute(f"select * from Torre where id = {id}")
+            res = cursor.fetchone()
+
+            if res:
+                cols = [cols[0] for cols in cursor.description]
+                TOW =  tower.Tower(dict(zip(cols, res)))
+            cursor.close()
+            connection['connection'].close()
+
+            RES.setData(TOW.json())
+
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
+    
+    def put(self, request):
+        # per aggiornare le informazioni di un torre
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+        rTower = request.data
+
+        #permissions
+        if user["account_type"] != 'ADMIN': # solo per amministratori
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(connection['connection'])
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #we check if the locker exists in our database
+        cursor.execute(f'select * from Torre where id = {rTower['id']}')
+        res = cursor.fetchone()
+        if not res:
+            RES.setMessage("La torre che si vuole modificare non esiste.")
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        
+        query_s = 'update Locker set '
+        query_e = f" where id = {rTower['id']}"
+        tower_q = tower.Tower()
+        values = tower_q.query(rTower)
+
+        query = c.concatenate([query_s, values, query_e])
+
+        try:
+            cursor.execute(query)
+            cursor.commit()
+            cursor.close()
+            connection['connection'].close()
+            RES.setMessage('Torre aggiornata con successo.')
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
+
+
+"""
+Class to get all Lockers data
+GET     - get all data
+"""
+class TowersAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    def get(self, request):
+        #ritorna tutte le informazioni di tutti le torri
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+
+        #permissions
+        if user["account_type"] == 'USER': # solo per amministratori e operatori (limitato)
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(str(connection['connection']))
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #query
+        try:
+            towers = []
+            if user['account_type'] == 'OPERATOR':
+                cursor.execute("select id, id_locker from Torre")
+            else:
+                cursor.execute("select * from Torre")
+            res = cursor.fetchall()
+
+            if res:
+                cols = [cols[0] for cols in cursor.description]
+                for row in res:
+                    TOW = tower.Tower(dict(zip(cols, row)))
+                    towers.append(TOW.json())
+            cursor.close()
+            connection['connection'].close()
+
+            RES.setData(towers)
+        
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
+
+#endregion
+# ====================.====================.====================.====================.==================== #
+
+
+# ====================.====================.====================.====================.==================== #
 #region | Cassetto
 """
 Class to manage Cassetto
 GET     - single (id) drawer info
-GET     - all drawer infos
 PUT     - update single drawer info
 POST    - add new drawer
 DELETE  - delete (id) drawer info
@@ -740,7 +933,7 @@ class DrawersAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user['account_type'] != 'ADMIN': #solo per amministratori
+        if user['account_type'] == 'USER': #solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -755,7 +948,62 @@ class DrawersAPIView(APIView):
         #query
         try:
             drawers = []
-            cursor.execute("select * from Cassetto")
+            if user['account_type'] == 'OPERATOR':
+                cursor.execute("select id, id_locker from Cassetto")
+            else:
+                cursor.execute("select * from Cassetto")
+            res = cursor.fetchall()
+
+            if res:
+                cols = [cols[0] for cols in cursor.description]
+                for row in res:
+                    DRA = drawer.Drawer(dict(zip(cols, row)))
+                    drawers.append(DRA.json())
+            cursor.close()
+            connection['connection'].close()
+
+            RES.setData(drawers)
+        
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
+
+
+"""
+Class to get all Drawers data filtered by status
+GET    - get all data by status
+"""
+class DrawerFiltered(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    def get(self, request):
+        # ritorna tutte le informazioni di tutti i cassetti filtrati per status
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+
+        #permissions
+        if user['account_type'] == 'USER': #solo per amministratori e operatori (limitato)
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(str(connection['connection']))
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #query
+        try:
+            drawers = []
+            cursor.execute("SELECT C.* FROM Cassetto C LEFT JOIN Prenotazione P ON C.id = P.id_cassetto WHERE C.is_full = 0 AND (P.id_cassetto IS NULL OR P.id_causaleprenotazione != ?)", ('OPEN', ))
+
+
             res = cursor.fetchall()
 
             if res:
@@ -783,7 +1031,6 @@ class DrawersAPIView(APIView):
 #region | Prenotazioni
 """
 Class to manage Prenotazioni
-GET     - single (id) booking info
 GET     - all booking infos
 PUT     - update single booking info
 POST    - add new booking info
@@ -922,8 +1169,8 @@ class BookingAPIView(APIView):
 
         #we insert the data into the database
         try:
-            cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione)
-                              values(?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'], boo['id_cassetto'], boo['timestamp_end'], boo['waybill'], boo['ticket'], user['id'], boo['id_causaleprenotazione'])
+            cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione)
+                              values(?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'], boo['id_torre'], boo['id_cassetto'], boo['timestamp_end'], boo['waybill'], boo['ticket'], user['id'], boo['id_causaleprenotazione'])
             
             cursor.commit()
             cursor.close()
@@ -988,7 +1235,7 @@ class BookingsAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user['account_type'] != 'ADMIN': #solo per amministratori
+        if user['account_type'] == 'USER': #solo per amministratori e utenti
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -1003,7 +1250,14 @@ class BookingsAPIView(APIView):
         #query
         bookings = []
         try:
-            cursor.execute("select * from Prenotazione")
+            if user['account_type'] == 'OPERATOR':
+                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto
+                                    from Prenotazione as P, Torre as T, Cassetto as C
+                                    where P.id_cassetto = C.id
+                                    and P.id_torre = T.id
+                                    and id_utente = ?""", (user['id'], ))
+            else:
+                cursor.execute("select * from Prenotazione")
             res = cursor.fetchall()
 
             if res:
@@ -1022,6 +1276,56 @@ class BookingsAPIView(APIView):
 
         return Response(RES.json(), status=status.HTTP_200_OK)
 
+
+"""
+Class to update Booking status
+PUT    - update single booking status
+"""
+class BookStatusAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    def put(self, request):
+        # per aggiornare lo stato di una prenotazione
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+        rBooking = request.data
+
+
+        #permissions
+        if user["account_type"] == 'USER': # solo per amministratori e operatori
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(connection['connection'])
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #we check if the locker exists in our database
+        cursor.execute('select * from Prenotazione where timestamp_start = ?', (rBooking['timestamp_start'], ))
+        res = cursor.fetchone()
+        if not res:
+            RES.setMessage("La prenotazione che si vuole modificare non esiste.")
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        try:
+            cursor.execute("update Prenotazione set id_causaleprenotazione = ? where timestamp_start = ?", (rBooking['id_causaleprenotazione'], rBooking['timestamp_start']))
+            cursor.commit()
+            cursor.close()
+            connection['connection'].close()
+            RES.setResult(0)
+            RES.setMessage('Prenotazione aggiornata con successo.')
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setResult(-1)
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
 
 
 #endregion
@@ -1157,7 +1461,61 @@ class BookLocAPIView(APIView):
         return Response(RES.json(), status=status.HTTP_200_OK)
 
 
+"""
+Class to manage Towers and Drawers joined view
+GET    - get all data joined with Towers and Drawers
+"""
+class TowersDrawersAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
 
+    def get(self, request):
+        # ritorna tutte le informazioni di tutti i cassetti
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+
+        #permissions
+        if user['account_type'] != 'ADMIN' and user['account_type'] != 'OPERATOR': #solo per amministratori e operatori
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(str(connection['connection']))
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #query
+        try:
+            lockers = []
+            cursor.execute("""
+                            select t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
+                            from Torre as t, Cassetto as c, Locker as l
+                            where t.id_locker = l.id
+                            and c.id_torre = t.id
+                            """)
+            res = cursor.fetchall()
+
+            if res:
+                cols = [col[0] for col in cursor.description]
+                
+                for row in res:
+                    locker_data = dict(zip(cols, row))
+                    lockers.append(locker_data)
+
+            cursor.close()
+            connection['connection'].close()
+
+            RES.setData(lockers)
+        
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
 
 #endregion
 # ====================.====================.====================.====================.==================== #

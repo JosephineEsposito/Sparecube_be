@@ -120,6 +120,49 @@ class UserAPIView(APIView):
 
 
 """
+Class to update externally a user
+PUT     - update single user info by id
+"""
+class UpdateUserAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    def put(self, request, id):
+        # per aggiornare i dati di un utente dall'esterno
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+
+        #permissions
+        if user['account_type'] != 'ADMIN': #solo per amministratori
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(connection['connection'])
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #query
+        try:
+            cursor.execute('update account_utente set is_active = 0 where id = ?', id)
+            cursor.commit()
+            cursor.close()
+            connection['connection'].close()
+            RES.setMessage('Account disattivato con successo.')
+            RES.setResult(0)
+
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
+
+
+"""
 Class to get all users data
 GET     - get all users data
 """
@@ -210,6 +253,7 @@ class CreateUserAPIView(APIView):
             """
             
             RES.setMessage("La registrazione è andata a buon fine. A breve riceverai un\'email da confermare.")
+            RES.setResult(0)
 
         except pyodbc.Error as err:
             RES.dbError()
@@ -248,7 +292,7 @@ class LoginUserAPIView(APIView):
                 return JsonResponse({'refresh_token' : str(refresh), 'access_token' : str(refresh.access_token),}, status=200)
             else:
                 logger.debug('user not found')
-                return JsonResponse({'message': 'Le credenziali non sono valide'}, status=403)
+                return JsonResponse({'message': 'Le credenziali non sono valide'}, status=401)
         else:
             return JsonResponse({'message': serializer.errors}, status=400)
 

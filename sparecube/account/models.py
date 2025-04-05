@@ -56,7 +56,7 @@ class Utente(AbstractBaseUser, PermissionsMixin):
     
     email = models.EmailField(_('email'), max_length=80, unique=True, help_text=_('Obbligatorio. 150 caratteri o meno. Lettere, digiti e _ solamente.'), error_messages={'Errors': _("Email non disponibile."),})
 
-    account_type = models.CharField(_('account_type'), blank=True, max_length=5)
+    account_type = models.CharField(_('account_type'), blank=True, max_length=10)
 
     # se é account attivo
     is_active = models.BooleanField(_('is_active'), blank=False, default=True) #use this to activate accounts
