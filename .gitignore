@@ -27,3 +27,6 @@ venv.bak/
 .vscode/
 .vscode
 *.rar
+
+.idea/
+
