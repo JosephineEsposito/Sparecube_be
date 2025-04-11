@@ -1,5 +1,5 @@
 """
-Manager of Logs data
+Manager of Logs data for the database
 """
 
 from .. import crypt as c
