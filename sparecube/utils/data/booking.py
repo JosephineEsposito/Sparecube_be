@@ -72,21 +72,21 @@ class Booking():
     def query(self, o):
         data = []
         if "timestamp_end" in o:
-            data.append(f"timestamp_end = {o["timestamp_end"]}")
+            data.append(f"timestamp_end = {o['timestamp_end']}")
         if "waybill" in o:
-            data.append(f"waybill = {o["waybill"]}")
+            data.append(f"waybill = {o['waybill']}")
         if "ticket" in o:
-            data.append(f"ticket = {o["ticket"]}")
+            data.append(f"ticket = {o['ticket']}")
         if "id_utente" in o:
-            data.append(f"id_utente = {o["id_utente"]}")
+            data.append(f"id_utente = {o['id_utente']}")
         if "id_locker" in o:
-            data.append(f"id_locker = {o["id_locker"]}")
+            data.append(f"id_locker = {o['id_locker']}")
         if "id_torre" in o:
-            data.append(f"id_torre = {o["id_torre"]}")
+            data.append(f"id_torre = {o['id_torre']}")
         if "id_cassetto" in o:
-            data.append(f"id_cassetto = {o["id_cassetto"]}")
+            data.append(f"id_cassetto = {o['id_cassetto']}")
         if "id_causaleprenotazione" in o:
-            data.append(f"id_causaleprenotazione = {o["id_causaleprenotazione"]}")
+            data.append(f"id_causaleprenotazione = {o['id_causaleprenotazione']}")
         
         tmp = []
         for i in range(len(data)):

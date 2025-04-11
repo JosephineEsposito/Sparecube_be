@@ -57,9 +57,9 @@ class Drawer():
         data = []
 
         if "width" in o:
-            data.append(f"width = {o["width"]}")
+            data.append(f"width = {o['width']}")
         if "height" in o:
-            data.append(f"height = {o["height"]}")
+            data.append(f"height = {o['height']}")
         if "depth" in o:
             data.append(f"depth = {o['depth']}")
         if "status" in o:
