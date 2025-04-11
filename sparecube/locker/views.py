@@ -1542,9 +1542,11 @@ class TowersDrawersAPIView(APIView):
             lockers = []
             cursor.execute("""
                             select t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
-                            from Torre as t, Cassetto as c, Locker as l
-                            where t.id_locker = l.id
-                            and c.id_torre = t.id
+                            from Torre as t
+                            join Cassetto c on c.id_torre = t.id
+                            join Locker l on t.id_locker = l.id
+                            left join Prenotazione P on p.id_cassetto = c.id
+                            where p.id_causaleprenotazione is null or p.id_causaleprenotazione != 'OPEN'
                             """)
             res = cursor.fetchall()
 
