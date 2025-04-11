@@ -112,7 +112,7 @@ class LocationAPIView(APIView):
         cursor = connection['connection'].cursor()
 
         #we check if the location exists in our database
-        cursor.execute(f'select * from Localita where id = {rLocalita['id']}')
+        cursor.execute(f"select * from Localita where id = {rLocalita['id']}")
         res = cursor.fetchone()
         if not res:
             RES.setMessage("La località che si vuole modificare non esiste.")
@@ -225,7 +225,7 @@ class LocationAPIView(APIView):
         
         #query
         try:
-            cursor.execute(f'delete Localita where id = {id}')
+            cursor.execute(f"delete Localita where id = {id}")
             cursor.commit()
             cursor.close()
             connection['connection'].close()
@@ -398,7 +398,7 @@ class LockerAPIView(APIView):
         cursor = connection['connection'].cursor()
 
         #we check if the locker exists in our database
-        cursor.execute(f'select * from Locker where id = {rLocker['id']}')
+        cursor.execute(f"select * from Locker where id = {rLocker['id']}")
         res = cursor.fetchone()
         if not res:
             RES.setMessage("Il locker che si vuole modificare non esiste.")
@@ -448,7 +448,7 @@ class LockerAPIView(APIView):
         db_locker = db_locker.base()
 
         #query
-        cursor.execute(f'select * from Locker where number = {rLocker['number']}')
+        cursor.execute(f"select * from Locker where number = {rLocker['number']}")
         res = cursor.fetchone()
         if res:
             RES.setMessage('Esiste già un locker con questo id.')
@@ -510,7 +510,7 @@ class LockerAPIView(APIView):
         
         #query cassetti
         try:
-            cursor.execute(f'delete Cassetto where id_locker = {id}')
+            cursor.execute(f"delete Cassetto where id_locker = {id}")
             cursor.commit()
             cursor.close()
             connection['connection'].close()
@@ -531,7 +531,7 @@ class LockerAPIView(APIView):
 
         #query locker
         try:
-            cursor.execute(f'delete Locker where id = {id}')
+            cursor.execute(f"delete Locker where id = {id}")
             cursor.commit()
             cursor.close()
             connection['connection'].close()
@@ -665,7 +665,7 @@ class TowerAPIView(APIView):
         cursor = connection['connection'].cursor()
 
         #we check if the locker exists in our database
-        cursor.execute(f'select * from Torre where id = {rTower['id']}')
+        cursor.execute(f"select * from Torre where id = {rTower['id']}")
         res = cursor.fetchone()
         if not res:
             RES.setMessage("La torre che si vuole modificare non esiste.")
@@ -813,7 +813,7 @@ class DrawerAPIView(APIView):
         cursor = connection['connection'].cursor()
 
         #we check if the locker exists in our database
-        cursor.execute(f'select * from Cassetto where id = {rDrawer['id']}')
+        cursor.execute(f"select * from Cassetto where id = {rDrawer['id']}")
         res = cursor.fetchone()
         if not res:
             RES.setMessage("Il cassetto che si vuole modificare non esiste.")
@@ -908,7 +908,7 @@ class DrawerAPIView(APIView):
         
         #query cassetti
         try:
-            cursor.execute(f'delete Cassetto where id = {id}')
+            cursor.execute(f"delete Cassetto where id = {id}")
             cursor.commit()
             cursor.close()
             connection['connection'].close()
@@ -1103,7 +1103,7 @@ class BookingAPIView(APIView):
         cursor = connection['connection'].cursor()
 
         #we check if the locker exists in our database
-        cursor.execute(f'select * from Prenotazione where timestamp_start = {rBooking['timestamp_start']}')
+        cursor.execute(f"select * from Prenotazione where timestamp_start = {rBooking['timestamp_start']}")
         res = cursor.fetchone()
         if not res:
             RES.setMessage("La prenotazione che si vuole modificare non esiste.")
@@ -1157,7 +1157,7 @@ class BookingAPIView(APIView):
         timestamp = c.get_date()
 
         # query
-        cursor.execute(f'select * from Prenotazione where timestamp_start = \'{timestamp}\'')
+        cursor.execute(f"select * from Prenotazione where timestamp_start = \'{timestamp}\'")
         res = cursor.fetchone()
         if res:
             RES.setMessage('Esiste già una prenotazione con questo timestamp_start.')
@@ -1233,68 +1233,6 @@ class BookingAPIView(APIView):
             RES.setErrors(str(err))
 
         return Response(RES.json(), status=status.HTTP_200_OK)
-
-
-    # def post(self, request):
-    #     # per aggiungere nuove prenotazioni
-    #     RES.clean()
-    #     serializer = self.serializer_class(request.user)
-    #     user = serializer.data
-    #     rBooking = request.data
-    #
-    #     #permissions -> tutti i profili possono creare una prenotazione
-    #     """
-    #     if user['account_type'] < 1: #amministratore only?
-    #         RES.permissionDenied()
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #     """
-    #
-    #     #database connection
-    #     connection = db.connectDB()
-    #     if connection['esito'] == -1:
-    #         RES.dbError()
-    #         RES.setErrors(connection['connection'])
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #     cursor = connection['connection'].cursor()
-    #
-    #     #variables
-    #     db_booking = booking.Booking()
-    #     db_booking = db_booking.base()
-    #
-    #     timestamp = c.get_date()
-    #
-    #     #query
-    #     cursor.execute(f'select * from Prenotazione where timestamp_start = \'{timestamp}\'')
-    #     res = cursor.fetchone()
-    #     if res:
-    #         RES.setMessage('Esiste già una prenotazione con questo timestamp_start.')
-    #         RES.setResult(-1)
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #
-    #     #we convert and check the values to the correct ones!
-    #     boo = booking.Booking(rBooking)
-    #     boo = boo.validate()
-    #
-    #     #variables
-    #     boo['timestamp_start'] = c.get_date()
-    #
-    #     #we insert the data into the database
-    #     try:
-    #         cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione)
-    #                           values(?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'], boo['id_torre'], boo['id_cassetto'], boo['timestamp_end'], boo['waybill'], boo['ticket'], user['id'], boo['id_causaleprenotazione'])
-    #
-    #         cursor.commit()
-    #         cursor.close()
-    #         connection['connection'].close()
-    #         RES.setResult(0)
-    #         RES.setMessage('Prenotazione inserita.')
-    #
-    #     except pyodbc.Error as err:
-    #         RES.dbError()
-    #         RES.setResult(-1)
-    #         RES.setErrors(str(err))
-    #
-    #     return Response(RES.json(), status=status.HTTP_200_OK)
     
     def delete(self,request, id):
         # per eliminare una prenotazione
@@ -1317,7 +1255,7 @@ class BookingAPIView(APIView):
         
         #query
         try:
-            cursor.execute(f'delete Prenotazione where timestamp_start = {id}')
+            cursor.execute(f"delete Prenotazione where timestamp_start = {id}")
             cursor.commit()
             cursor.close()
             connection['connection'].close()
