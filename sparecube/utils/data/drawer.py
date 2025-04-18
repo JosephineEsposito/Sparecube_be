@@ -13,7 +13,8 @@ class Drawer():
             self.height     = None
             self.depth      = None
             self.status     = None
-            self.id_torre  = None
+            self.id_torre   = None
+            self.id_box     = None
         else:
             # initialize attributes with values from args dictionary
             self.id         = args.get('id')
@@ -22,17 +23,19 @@ class Drawer():
             self.depth      = args.get('depth')
             self.status     = args.get('status')
             self.id_torre   = args.get('id_torre')
+            self.id_box     = args.get('id_box')
     
 
     def json(self):
         data = {}
 
         if self.id          : data['id']            = self.id
+        if self.id_torre    : data['id_torre']      = self.id_torre
+        if self.id_box      : data['id_box']        = self.id_box
         if self.width       : data['width']         = self.width
         if self.height      : data['height']        = self.height
         if self.depth       : data['depth']         = self.depth
         if self.status      : data['status']        = self.status
-        if self.id_torre    : data['id_torre']      = self.id_torre
 
         return data
     

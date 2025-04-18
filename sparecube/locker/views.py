@@ -1007,7 +1007,6 @@ class DrawerFiltered(APIView):
             drawers = []
             cursor.execute("SELECT C.* FROM Cassetto C LEFT JOIN Prenotazione P ON C.id = P.id_cassetto WHERE C.is_full = 0 AND (P.id_cassetto IS NULL OR P.id_causaleprenotazione != ?)", ('OPEN', ))
 
-
             res = cursor.fetchall()
 
             if res:
@@ -1171,6 +1170,21 @@ class BookingAPIView(APIView):
         # variables
         boo['timestamp_start'] = c.get_date()
 
+        # we get the tower number
+        try:
+            cursor.execute(f"select number from Torre where id_torre = {boo['id_torre']}")
+            res = cursor.fetchone()
+
+            if res:
+                cols = [cols[0] for cols in cursor.description]
+                print(dict(zip(cols, res)))
+
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setResult(-1)
+            RES.setErrors(str(err))
+
+
         # we insert the data into the database
         try:
             cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione)
@@ -1179,8 +1193,6 @@ class BookingAPIView(APIView):
                            user['id'], boo['id_causaleprenotazione'])
 
             cursor.commit()
-            # cursor.close()
-            # connection['connection'].close()
 
             RES.setResult(0)
             RES.setMessage('Prenotazione inserita.')
@@ -1191,12 +1203,14 @@ class BookingAPIView(APIView):
                 'message': 'reserve_box',
                 'timestamp_start': str(boo['timestamp_start']),
                 'id_locker': boo['id_locker'],
-                'id_torre': boo['id_torre'],
-                'id_cassetto': boo['id_cassetto'],
+                'id_torre': rBooking['id_box'], # < changed to the id used by #boo['id_torre'],
+                'id_cassetto': rBooking['id_box'], # < changed to the id used by the tower
                 'waybill': boo['waybill'],
                 'ticket': boo['ticket'],
                 'id_causaleprenotazione': boo['id_causaleprenotazione']
             }
+
+            print(mqtt_data)
 
             mqtt_msg = MQTT_MSG(
                 topic=Topics.ToLocker.uniqueLocker + str(boo['id_locker']),
