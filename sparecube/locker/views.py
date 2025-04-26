@@ -1555,12 +1555,24 @@ class TowersDrawersAPIView(APIView):
         try:
             lockers = []
             cursor.execute("""
-                            select t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
-                            from Torre as t
-                            join Cassetto c on c.id_torre = t.id
-                            join Locker l on t.id_locker = l.id
-                            left join Prenotazione P on p.id_cassetto = c.id
-                            where p.id_causaleprenotazione is null or p.id_causaleprenotazione != 'OPEN'
+                            WITH LatestPrenotazione AS (
+                            SELECT p.*
+                            FROM Prenotazione p
+                            INNER JOIN (
+                                SELECT id_cassetto, MAX(timestamp_start) AS max_start
+                                FROM Prenotazione
+                                GROUP BY id_cassetto
+                            ) latest ON p.id_cassetto = latest.id_cassetto
+                                    AND p.timestamp_start = latest.max_start
+                            )
+
+                            SELECT t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
+                            FROM Torre AS t
+                            JOIN Cassetto c ON c.id_torre = t.id
+                            JOIN Locker l ON t.id_locker = l.id
+                            LEFT JOIN LatestPrenotazione p ON p.id_cassetto = c.id
+                            WHERE p.id_causaleprenotazione IS NULL OR p.id_causaleprenotazione != 'OPEN'
+
                             """)
             res = cursor.fetchall()
 
