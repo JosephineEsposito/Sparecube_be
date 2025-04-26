@@ -1533,66 +1533,60 @@ class TowersDrawersAPIView(APIView):
     serializer_class = UserSerializer
 
     def get(self, request):
-        # ritorna tutte le informazioni di tutti i cassetti
         RES.clean()
-        serializer = self.serializer_class(request.user)
-        user = serializer.data
-
-        #permissions
-        if user['account_type'] != 'ADMIN' and user['account_type'] != 'OPERATOR': #solo per amministratori e operatori
+        
+        # --- User check ---
+        user = self.serializer_class(request.user).data
+        if user['account_type'] not in ('ADMIN', 'OPERATOR'):
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
-        #database connection
+        # --- Database connection ---
         connection = db.connectDB()
         if connection['esito'] == -1:
             RES.dbError()
             RES.setErrors(str(connection['connection']))
             return Response(RES.json(), status=status.HTTP_200_OK)
-        cursor = connection['connection'].cursor()
 
-        #query
+        lockers = []
+        query = """
+            WITH LatestPrenotazione AS (
+                SELECT p.*
+                FROM Prenotazione p
+                INNER JOIN (
+                    SELECT id_cassetto, MAX(timestamp_start) AS max_start
+                    FROM Prenotazione
+                    GROUP BY id_cassetto
+                ) latest ON p.id_cassetto = latest.id_cassetto
+                         AND p.timestamp_start = latest.max_start
+            )
+            SELECT t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
+            FROM Torre AS t
+            JOIN Cassetto c ON c.id_torre = t.id
+            JOIN Locker l ON t.id_locker = l.id
+            LEFT JOIN LatestPrenotazione p ON p.id_cassetto = c.id
+            WHERE p.id_cassetto IS NULL OR p.id_causaleprenotazione != 'OPEN'
+            """
+
         try:
-            lockers = []
-            cursor.execute("""
-                            WITH LatestPrenotazione AS (
-                            SELECT p.*
-                            FROM Prenotazione p
-                            INNER JOIN (
-                                SELECT id_cassetto, MAX(timestamp_start) AS max_start
-                                FROM Prenotazione
-                                GROUP BY id_cassetto
-                            ) latest ON p.id_cassetto = latest.id_cassetto
-                                    AND p.timestamp_start = latest.max_start
-                            )
-
-                            SELECT t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
-                            FROM Torre AS t
-                            JOIN Cassetto c ON c.id_torre = t.id
-                            JOIN Locker l ON t.id_locker = l.id
-                            LEFT JOIN LatestPrenotazione p ON p.id_cassetto = c.id
-                            WHERE p.id_causaleprenotazione IS NULL OR p.id_causaleprenotazione != 'OPEN'
-
-                            """)
+            cursor = connection['connection'].cursor()
+            cursor.execute(query)
             res = cursor.fetchall()
-
             if res:
                 cols = [col[0] for col in cursor.description]
-                
-                for row in res:
-                    locker_data = dict(zip(cols, row))
-                    lockers.append(locker_data)
+                lockers = [dict(zip(cols, row)) for row in res]
 
-            cursor.close()
-            connection['connection'].close()
-
-            RES.setData(lockers)
-        
         except pyodbc.Error as err:
             RES.dbError()
             RES.setErrors(str(err))
 
+        finally:
+            cursor.close()
+            connection['connection'].close()
+
+        RES.setData(lockers)
         return Response(RES.json(), status=status.HTTP_200_OK)
+
 
 #endregion
 # ====================.====================.====================.====================.==================== #
