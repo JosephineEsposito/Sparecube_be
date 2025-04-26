@@ -1550,22 +1550,27 @@ class TowersDrawersAPIView(APIView):
 
         lockers = []
         query = """
-            WITH LatestPrenotazione AS (
-                SELECT p.*
-                FROM Prenotazione p
-                INNER JOIN (
-                    SELECT id_cassetto, MAX(timestamp_start) AS max_start
-                    FROM Prenotazione
-                    GROUP BY id_cassetto
-                ) latest ON p.id_cassetto = latest.id_cassetto
-                         AND p.timestamp_start = latest.max_start
-            )
-            SELECT t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
-            FROM Torre AS t
-            JOIN Cassetto c ON c.id_torre = t.id
-            JOIN Locker l ON t.id_locker = l.id
-            LEFT JOIN LatestPrenotazione p ON p.id_cassetto = c.id
-            WHERE p.id_cassetto IS NULL OR p.id_causaleprenotazione != 'OPEN'
+                WITH LatestPrenotazione AS (
+                    SELECT p.*,
+                        ROW_NUMBER() OVER (PARTITION BY p.id_cassetto ORDER BY p.timestamp_start DESC, p.timestamp_start DESC) AS rn
+                    FROM Prenotazione p
+                )
+                SELECT 
+                    t.id_locker, 
+                    c.id_torre, 
+                    c.id_box, 
+                    c.width, 
+                    c.height, 
+                    c.depth, 
+                    c.status, 
+                    c.is_full, 
+                    c.is_open
+                FROM Torre AS t
+                JOIN Cassetto c ON c.id_torre = t.id
+                JOIN Locker l ON t.id_locker = l.id
+                LEFT JOIN LatestPrenotazione p ON p.id_cassetto = c.id AND p.rn = 1
+                WHERE p.id_cassetto IS NULL OR p.id_causaleprenotazione != 'OPEN'
+
             """
 
         try:
