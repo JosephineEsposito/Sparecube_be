@@ -722,7 +722,7 @@ class TowersAPIView(APIView):
         try:
             towers = []
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("select id, id_locker from Torre")
+                cursor.execute("select * from Torre")
             else:
                 cursor.execute("select * from Torre")
             res = cursor.fetchall()
@@ -1012,7 +1012,8 @@ class DrawerFiltered(APIView):
                     FROM Prenotazione p
                 )
                 SELECT 
-                    t.id_locker, 
+                    t.id_locker,
+                    c.id,
                     c.id_torre, 
                     c.id_box, 
                     c.width, 
