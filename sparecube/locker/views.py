@@ -1230,8 +1230,8 @@ class BookingAPIView(APIView):
 
                 try:
                     cursor.execute(
-                        '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ?''',
-                        boo['id_locker'], boo['id_torre'], boo['id_cassetto'])
+                        '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ? and timestamp_end = ?''',
+                        boo['id_locker'], boo['id_torre'], boo['id_cassetto'], c.get_date())
                     cursor.commit()
                 # Logger.info(Null, "Exception during publish to")
                 except pyodbc.Error:
