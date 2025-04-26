@@ -1005,7 +1005,28 @@ class DrawerFiltered(APIView):
         #query
         try:
             drawers = []
-            cursor.execute("SELECT C.* FROM Cassetto C LEFT JOIN Prenotazione P ON C.id = P.id_cassetto WHERE C.is_full = 0 AND (P.id_cassetto IS NULL OR P.id_causaleprenotazione != ?)", ('OPEN', ))
+            cursor.execute("""
+                WITH LatestPrenotazione AS (
+                    SELECT p.*,
+                        ROW_NUMBER() OVER (PARTITION BY p.id_cassetto ORDER BY p.timestamp_start DESC, p.timestamp_start DESC) AS rn
+                    FROM Prenotazione p
+                )
+                SELECT 
+                    t.id_locker, 
+                    c.id_torre, 
+                    c.id_box, 
+                    c.width, 
+                    c.height, 
+                    c.depth, 
+                    c.status, 
+                    c.is_full, 
+                    c.is_open
+                FROM Torre AS t
+                JOIN Cassetto c ON c.id_torre = t.id
+                JOIN Locker l ON t.id_locker = l.id
+                LEFT JOIN LatestPrenotazione p ON p.id_cassetto = c.id AND p.rn = 1
+                WHERE p.id_cassetto IS NULL OR p.id_causaleprenotazione != 'OPEN'
+            """)
 
             res = cursor.fetchall()
 
@@ -1533,65 +1554,54 @@ class TowersDrawersAPIView(APIView):
     serializer_class = UserSerializer
 
     def get(self, request):
+        # ritorna tutte le informazioni di tutti i cassetti
         RES.clean()
-        
-        # --- User check ---
-        user = self.serializer_class(request.user).data
-        if user['account_type'] not in ('ADMIN', 'OPERATOR'):
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+
+        #permissions
+        if user['account_type'] != 'ADMIN' and user['account_type'] != 'OPERATOR': #solo per amministratori e operatori
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
-        # --- Database connection ---
+        #database connection
         connection = db.connectDB()
         if connection['esito'] == -1:
             RES.dbError()
             RES.setErrors(str(connection['connection']))
             return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
 
-        lockers = []
-        query = """
-                WITH LatestPrenotazione AS (
-                    SELECT p.*,
-                        ROW_NUMBER() OVER (PARTITION BY p.id_cassetto ORDER BY p.timestamp_start DESC, p.timestamp_start DESC) AS rn
-                    FROM Prenotazione p
-                )
-                SELECT 
-                    t.id_locker, 
-                    c.id_torre, 
-                    c.id_box, 
-                    c.width, 
-                    c.height, 
-                    c.depth, 
-                    c.status, 
-                    c.is_full, 
-                    c.is_open
-                FROM Torre AS t
-                JOIN Cassetto c ON c.id_torre = t.id
-                JOIN Locker l ON t.id_locker = l.id
-                LEFT JOIN LatestPrenotazione p ON p.id_cassetto = c.id AND p.rn = 1
-                WHERE p.id_cassetto IS NULL OR p.id_causaleprenotazione != 'OPEN'
-
-            """
-
+        #query
         try:
-            cursor = connection['connection'].cursor()
-            cursor.execute(query)
+            lockers = []
+            cursor.execute("""
+                            select t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
+                            from Torre as t
+                            join Cassetto c on c.id_torre = t.id
+                            join Locker l on t.id_locker = l.id
+                            left join Prenotazione P on p.id_cassetto = c.id
+                            where p.id_causaleprenotazione is null or p.id_causaleprenotazione != 'OPEN'
+                            """)
             res = cursor.fetchall()
+
             if res:
                 cols = [col[0] for col in cursor.description]
-                lockers = [dict(zip(cols, row)) for row in res]
+                
+                for row in res:
+                    locker_data = dict(zip(cols, row))
+                    lockers.append(locker_data)
 
+            cursor.close()
+            connection['connection'].close()
+
+            RES.setData(lockers)
+        
         except pyodbc.Error as err:
             RES.dbError()
             RES.setErrors(str(err))
 
-        finally:
-            cursor.close()
-            connection['connection'].close()
-
-        RES.setData(lockers)
         return Response(RES.json(), status=status.HTTP_200_OK)
-
 
 #endregion
 # ====================.====================.====================.====================.==================== #
