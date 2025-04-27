@@ -46,7 +46,7 @@ urlpatterns = [
     path('booking/all/',        BookingsAPIView.as_view(),      name='booking'),
     path('booking/<int:id>',    BookingsAPIView.as_view(),      name='booking'),
 
-    path('booking/status/',     BookStatusAPIView.as_view(),    name='booking'),
+    path('booking/status/',     BookingAPIView.as_view(),       name='booking'),
 
 
     path('booking/all/join/',   BookLocAPIView.as_view(),       name='booking'),

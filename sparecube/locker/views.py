@@ -1124,15 +1124,17 @@ class BookingAPIView(APIView):
         cursor = connection['connection'].cursor()
 
         #we check if the locker exists in our database
-        cursor.execute(f"select * from Prenotazione where timestamp_start = {rBooking['timestamp_start']}")
+        query = f"select p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, c.id_torre, c.id_box from Prenotazione p, Cassetto c where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id"
+        cursor.execute(query)
         res = cursor.fetchone()
         if not res:
             RES.setMessage("La prenotazione che si vuole modificare non esiste.")
             return Response(RES.json(), status=status.HTTP_200_OK)
         else:
             cols = [cols[0] for cols in cursor.description]
-            BOO = booking.Booking(dict(zip(cols, res)))
-        
+            BOO = (dict(zip(cols, res)))
+
+        prenot = BOO.copy()
        
         # Author: @josephineesposito - 27042025
         # AGGIUNTA STRUTTURA MESSAGGIO MQTT
@@ -1141,12 +1143,12 @@ class BookingAPIView(APIView):
             'producer': 'BE',
             'message': 'Setta_Prenotazione',  
                 'data': {
-                    'idTower': BOO['id_torre'],
+                    'idTower': prenot['id_torre'],
                     'myBox': {
-                        'id': BOO['id_box'],
-                        'letteraVettura': BOO['waybill'],
-                        'ticket': BOO['ticket'],
-                        'id_causaleprenotazione': BOO['id_causaleprenotazione']           
+                        'id': prenot['id_box'],
+                        'letteraVettura': prenot['waybill'],
+                        'ticket': prenot['ticket'],
+                        'id_causaleprenotazione': prenot['id_causaleprenotazione']           
                     }
                 }
         }
@@ -1171,19 +1173,21 @@ class BookingAPIView(APIView):
 
             try:
                 cursor.execute(
-                    '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ? and timestamp_end = ?''',
-                    BOO['id_locker'], BOO['id_torre'], BOO['id_cassetto'], c.get_date())
+                    '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' and timestamp_end = ? WHERE timestamp_start = ?''',
+                    c.get_date(), rBooking['timestamp_start'])
                 cursor.commit()
             except pyodbc.Error as err:
                 RES.dbError()
                 RES.setErrors(str(err))
         
         query_s = 'update Prenotazione set '
-        query_e = f" where timestamp_start = {rBooking['timestamp_start']}"
+        query_e = f" where timestamp_start = \'{rBooking['timestamp_start']}\'"
         booking_q = booking.Booking()
         values = booking_q.query(rBooking)
 
         query = c.concatenate([query_s, values, query_e])
+        print("update query:\n\n")
+        print(query)
 
         try:
             cursor.execute(query)
@@ -1268,18 +1272,6 @@ class BookingAPIView(APIView):
             RES.setMessage('Prenotazione inserita.')
 
             # BATOUL
-            # After successfully inserting the booking, send the data via MQTT
-            # mqtt_data = {
-            #     'message': 'reserve_box',
-            #     'timestamp_start': str(boo['timestamp_start']),
-            #     'id_locker': boo['id_locker'],
-            #     'id_torre': rBooking['id_box'], # < changed to the id used by #boo['id_torre'],
-            #     'id_cassetto': rBooking['id_box'], # < changed to the id used by the tower
-            #     'waybill': boo['waybill'],
-            #     'ticket': boo['ticket'],
-            #     'id_causaleprenotazione': boo['id_causaleprenotazione']
-            # }
-
             # MICHELE 270425
             # MODIFICATA STRUTTURA MESSAGGIO MQTT
 
