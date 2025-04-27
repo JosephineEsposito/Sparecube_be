@@ -1129,6 +1129,54 @@ class BookingAPIView(APIView):
         if not res:
             RES.setMessage("La prenotazione che si vuole modificare non esiste.")
             return Response(RES.json(), status=status.HTTP_200_OK)
+        else:
+            cols = [cols[0] for cols in cursor.description]
+            BOO = booking.Booking(dict(zip(cols, res)))
+        
+       
+        # Author: @josephineesposito - 27042025
+        # AGGIUNTA STRUTTURA MESSAGGIO MQTT
+
+        mqtt_data = {
+            'producer': 'BE',
+            'message': 'Setta_Prenotazione',  
+                'data': {
+                    'idTower': BOO['id_torre'],
+                    'myBox': {
+                        'id': BOO['id_box'],
+                        'letteraVettura': BOO['waybill'],
+                        'ticket': BOO['ticket'],
+                        'id_causaleprenotazione': BOO['id_causaleprenotazione']           
+                    }
+                }
+        }
+
+        print(mqtt_data)
+
+        mqtt_msg = MQTT_MSG(
+            topic=Topics.ToLocker.uniqueLocker + str(BOO['id_locker']),
+            payload=mqtt_data
+        )
+
+        mqtt_obj.connect()
+
+        if mqtt_obj.connected:
+            mqtt_obj.publish_msg(mqtt_msg)
+
+        if not mqtt_obj.connected or not mqtt_obj.published:
+            if not mqtt_obj.connected:
+                logger.warning("MQTT NOT CONNECTED")
+            if not mqtt_obj.published:
+                logger.warning("MQTT MSG NOT PUBLISHED")
+
+            try:
+                cursor.execute(
+                    '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ? and timestamp_end = ?''',
+                    BOO['id_locker'], BOO['id_torre'], BOO['id_cassetto'], c.get_date())
+                cursor.commit()
+            except pyodbc.Error as err:
+                RES.dbError()
+                RES.setErrors(str(err))
         
         query_s = 'update Prenotazione set '
         query_e = f" where timestamp_start = {rBooking['timestamp_start']}"
@@ -1248,15 +1296,6 @@ class BookingAPIView(APIView):
                         }
                     }
             }
-
-
-
-
-
-
-
-
-
 
             print(mqtt_data)
 
