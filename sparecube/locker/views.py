@@ -1221,16 +1221,42 @@ class BookingAPIView(APIView):
 
             # BATOUL
             # After successfully inserting the booking, send the data via MQTT
+            # mqtt_data = {
+            #     'message': 'reserve_box',
+            #     'timestamp_start': str(boo['timestamp_start']),
+            #     'id_locker': boo['id_locker'],
+            #     'id_torre': rBooking['id_box'], # < changed to the id used by #boo['id_torre'],
+            #     'id_cassetto': rBooking['id_box'], # < changed to the id used by the tower
+            #     'waybill': boo['waybill'],
+            #     'ticket': boo['ticket'],
+            #     'id_causaleprenotazione': boo['id_causaleprenotazione']
+            # }
+
+            # MICHELE 270425
+            # MODIFICATA STRUTTURA MESSAGGIO MQTT
+            
             mqtt_data = {
-                'message': 'reserve_box',
-                'timestamp_start': str(boo['timestamp_start']),
-                'id_locker': boo['id_locker'],
-                'id_torre': rBooking['id_box'], # < changed to the id used by #boo['id_torre'],
-                'id_cassetto': rBooking['id_box'], # < changed to the id used by the tower
-                'waybill': boo['waybill'],
-                'ticket': boo['ticket'],
-                'id_causaleprenotazione': boo['id_causaleprenotazione']
+                'producer': 'BE',
+                'message': 'Setta_Prenotazione',  
+                    'data': {
+                        'idTower': rBooking['id_box'],
+                        'myBox': {
+                            'id': rBooking['id_box'],
+                            'letteraVettura': boo['waybill'],
+                            'ticket': boo['ticket'],
+                            'id_causaleprenotazione': boo['id_causaleprenotazione']           
+                        }
+                    }
             }
+
+
+
+
+
+
+
+
+
 
             print(mqtt_data)
 
