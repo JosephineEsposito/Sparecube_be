@@ -1234,12 +1234,12 @@ class BookingAPIView(APIView):
 
             # MICHELE 270425
             # MODIFICATA STRUTTURA MESSAGGIO MQTT
-            
+
             mqtt_data = {
                 'producer': 'BE',
                 'message': 'Setta_Prenotazione',  
                     'data': {
-                        'idTower': rBooking['id_box'],
+                        'idTower': rBooking['id_torre'],
                         'myBox': {
                             'id': rBooking['id_box'],
                             'letteraVettura': boo['waybill'],
