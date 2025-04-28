@@ -1148,7 +1148,7 @@ class BookingAPIView(APIView):
                         'id': prenot['id_box'],
                         'letteraVettura': prenot['waybill'],
                         'ticket': prenot['ticket'],
-                        'statoPrenotazione': prenot['id_causaleprenotazione']           
+                        'id_causaleprenotazione': prenot['id_causaleprenotazione']           
                     }
                 }
         }
@@ -1284,7 +1284,7 @@ class BookingAPIView(APIView):
                             'id': rBooking['id_box'],
                             'letteraVettura': boo['waybill'],
                             'ticket': boo['ticket'],
-                            'statoPrenotazione': boo['id_causaleprenotazione']           
+                            'id_causaleprenotazione': boo['id_causaleprenotazione']           
                         }
                     }
             }
