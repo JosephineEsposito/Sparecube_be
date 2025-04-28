@@ -1111,7 +1111,7 @@ class BookingAPIView(APIView):
         rBooking = request.data
 
         #permissions
-        if user["account_type"] != 'ADMIN': # solo per amministratori?
+        if user["account_type"] != 'OPERATOR': # solo per amministratori?
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
         
@@ -1148,7 +1148,7 @@ class BookingAPIView(APIView):
                         'id': prenot['id_box'],
                         'letteraVettura': prenot['waybill'],
                         'ticket': prenot['ticket'],
-                        'id_causaleprenotazione': prenot['id_causaleprenotazione']           
+                        'statoPrenotazione': prenot['id_causaleprenotazione']           
                     }
                 }
         }
@@ -1246,7 +1246,7 @@ class BookingAPIView(APIView):
 
         # we get the tower number
         try:
-            cursor.execute(f"select number from Torre where id_torre = {boo['id_torre']}")
+            cursor.execute(f"select number from Torre where id = {boo['id_torre']}")
             res = cursor.fetchone()
 
             if res:
@@ -1284,7 +1284,7 @@ class BookingAPIView(APIView):
                             'id': rBooking['id_box'],
                             'letteraVettura': boo['waybill'],
                             'ticket': boo['ticket'],
-                            'id_causaleprenotazione': boo['id_causaleprenotazione']           
+                            'statoPrenotazione': boo['id_causaleprenotazione']           
                         }
                     }
             }
