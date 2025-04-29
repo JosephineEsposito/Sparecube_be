@@ -145,7 +145,6 @@ WSGI_APPLICATION = 'sparecube.wsgi.application'
 
 
 # region | Database Definition
-
 DATABASES = {
     'default': {
         'ENGINE' : 'mssql',
@@ -190,6 +189,7 @@ AUTH_PASSWORD_VALIDATORS = [
 #region | MQTT Configurations
 MQTT_CONFIG = {
     "BROKER_URL": os.getenv("MQTT_BROKER_URL"),
+    "BROKER_URL_BK": os.getenv("MQTT_BROKER_URL_BK"),
     "BROKER_PORT": int(os.getenv("MQTT_BROKER_PORT", 8883)),
     "CLIENT_ID": os.getenv("MQTT_CLIENT_ID"),
     "USERNAME": os.getenv("MQTT_USERNAME"),
