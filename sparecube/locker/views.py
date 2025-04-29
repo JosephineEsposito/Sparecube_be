@@ -1112,8 +1112,6 @@ class BookingAPIView(APIView):
         rBooking = request.data
 
 
-        # permissions
-        if user["account_type"] != 'OPERATOR':  # solo per amministratori?
 
         #permissions
         if user["account_type"] != 'OPERATOR': # solo per amministratori?
@@ -1159,8 +1157,6 @@ class BookingAPIView(APIView):
             BOO = (dict(zip(cols, res)))
 
 
-        prenot = BOO.copy()
-
         # Author: @josephineesposito - 27042025
         # AGGIUNTA STRUTTURA MESSAGGIO MQTT
         # Batoul..
@@ -1169,59 +1165,6 @@ class BookingAPIView(APIView):
 
 
         prenot = BOO.copy()
-       
-        mqtt_data = {
-            "Producer": "Sparecube_Website",
-            "Message": "cancel_reservation",
-            "DateTime": timestamp_message,
-            "Message_Id": "Sparecube_Website:cancel_reservation:" + timestamp_message,
-            "data": {
-                "idTower": prenot['id_torre'],
-                "myBox": {
-                    "id": prenot['id_box'],
-                    "letteraVettura": prenot['waybill'],
-                    "ticket": prenot['ticket'],
-                    "statoPrenotazione": BOO['id_causaleprenotazione']
-                }
-            }
-        }
-
-        print(mqtt_data)
-
-        mqtt_msg = MQTT_MSG(
-            topic=Topics.ToLocker.uniqueLocker + str(BOO['id_locker']),
-            payload=mqtt_data
-        )
-
-        mqtt_obj.connect()
-
-        if mqtt_obj.connected:
-            mqtt_obj.publish_msg(mqtt_msg)
-
-        if not mqtt_obj.connected or not mqtt_obj.published:
-            if not mqtt_obj.connected:
-                logger.warning("MQTT NOT CONNECTED")
-            if not mqtt_obj.published:
-                logger.warning("MQTT MSG NOT PUBLISHED")
-
-            try:
-                cursor.execute(
-                    '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' and timestamp_end = ? WHERE timestamp_start = ?''',
-                    c.get_date(), rBooking['timestamp_start'])
-                cursor.commit()
-            except pyodbc.Error as err:
-                RES.dbError()
-                RES.setErrors(str(err))
-        
-        query_s = 'update Prenotazione set '
-        query_e = f" where timestamp_start = \'{rBooking['timestamp_start']}\'"
-        booking_q = booking.Booking()
-        values = booking_q.query(rBooking)
-
-        query = c.concatenate([query_s, values, query_e])
-        print("update query:\n\n")
-        print(query)
-
 
         try:
             # cursor.execute("update Prenotazione set id_causaleprenotazione = ? where timestamp_start = ?",
@@ -1435,53 +1378,45 @@ class BookingAPIView(APIView):
 
             # BATOUL.. Move the MQTT MSG Format to mqttMsg Class and manage only DB Operations in this class
             if not To_Lockers_MSGs.addReservMQTTMsg(boo, id_torre, id_box):
-
-            timestamp_message = c.get_date()
-
-            mqtt_data = {
-                "Producer": "Sparecube_Website",
-                "Message": "reserve_box",
-                "DateTime": timestamp_message,
-                "Message_Id": "Sparecube_Website:reserve_box:" + timestamp_message,
-                "Data": {
-                    "idTower": rBooking['id_torre'],
-                    "myBox": {
-                        "id": rBooking['id_box'],
-                        "letteraVettura": boo['waybill'],
-                        "ticket": boo['ticket'],
-                        "statoPrenotazione": boo['id_causaleprenotazione']
-                    }
-                }
-            }
-
-
-            print(mqtt_data)
-
-            mqtt_msg = MQTT_MSG(
-                topic=Topics.ToLocker.uniqueLocker + str(boo['id_locker']),
-                payload=mqtt_data
-            )
-
-            mqtt_obj.connect()
-
-            if mqtt_obj.connected:
-                mqtt_obj.publish_msg(mqtt_msg)
-
-            if not mqtt_obj.connected or not mqtt_obj.published:
-                if not mqtt_obj.connected:
-                    logger.warning("MQTT NOT CONNECTED")
-                if not mqtt_obj.published:
-                    logger.warning("MQTT MSG NOT PUBLISHED")
-
-
                 try:
                     cursor.execute(
-                        '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ? and timestamp_end = ?''',
-                        boo['id_locker'], boo['id_torre'], boo['id_cassetto'], c.get_date())
+                        '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ?''',
+                        boo['id_locker'], boo['id_torre'], boo['id_cassetto'])
                     cursor.commit()
                 # Logger.info(Null, "Exception during publish to")
                 except pyodbc.Error:
                     RES.dbError()
+
+
+
+            # # BATOUL
+            # # After successfully inserting the booking, send the data via MQTT
+            # mqtt_data = {
+            #     'message': 'reserve_box',
+            #     'timestamp_start': str(boo['timestamp_start']),
+            #     'id_locker': boo['id_locker'],
+            #     'id_torre': boo['id_torre'],
+            #     'id_cassetto': boo['id_cassetto'],
+            #     'waybill': boo['waybill'],
+            #     'ticket': boo['ticket'],
+            #     'id_causaleprenotazione': boo['id_causaleprenotazione']
+            # }
+            #
+            # mqtt_msg = MQTT_MSG(
+            #     topic=Topics.ToLocker.uniqueLocker + str(boo['id_locker']),
+            #     payload=mqtt_data
+            # )
+            #
+            # mqtt_obj.connect()
+            #
+            # if mqtt_obj.connected:
+            #     mqtt_obj.publish_msg(mqtt_msg)
+            #
+            # if not mqtt_obj.connected or not mqtt_obj.published:
+            #     if not mqtt_obj.connected:
+            #         logger.warning("MQTT NOT CONNECTED")
+            #     if not mqtt_obj.published:
+            #         logger.warning("MQTT MSG NOT PUBLISHED")
 
 
 
