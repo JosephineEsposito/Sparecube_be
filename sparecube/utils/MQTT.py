@@ -120,8 +120,11 @@ class MQTTManager:
         except:
             print("[MQTT] Disconnect: ERROR")
 
-    def publish_msg(self, msg: MQTT_MSG, qos=2, retain=False):
-        self.publish(msg.topic, msg.payload, qos, retain)
+    def publish_msg(self, msg: MQTT_MSG, qos=2, retain=False) -> bool:
+        if self.publish(msg.topic, msg.payload, qos, retain):
+            return True
+        else:
+            return False
 
 
 
