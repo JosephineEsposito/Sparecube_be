@@ -1111,8 +1111,13 @@ class BookingAPIView(APIView):
         user = serializer.data
         rBooking = request.data
 
+
         # permissions
         if user["account_type"] != 'OPERATOR':  # solo per amministratori?
+
+        #permissions
+        if user["account_type"] != 'OPERATOR': # solo per amministratori?
+
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -1123,6 +1128,7 @@ class BookingAPIView(APIView):
             RES.setErrors(connection['connection'])
             return Response(RES.json(), status=status.HTTP_200_OK)
         cursor = connection['connection'].cursor()
+
 
         # # We need to save backup of this reservation to manage failed publishing mqtt msg
         # # region Reservation Backup
@@ -1139,6 +1145,9 @@ class BookingAPIView(APIView):
 
 
         # we check if the locker exists in our database
+
+        #we check if the locker exists in our database
+
         query = f"select p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, c.id_torre, c.id_box from Prenotazione p, Cassetto c where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id"
         cursor.execute(query)
         res = cursor.fetchone()
@@ -1149,6 +1158,7 @@ class BookingAPIView(APIView):
             cols = [cols[0] for cols in cursor.description]
             BOO = (dict(zip(cols, res)))
 
+
         prenot = BOO.copy()
 
         # Author: @josephineesposito - 27042025
@@ -1156,6 +1166,62 @@ class BookingAPIView(APIView):
         # Batoul..
         # Move forming MQTT Msg to mqttMsg class
         # Make the reservation status updated to the new status if only the mqtt msg published successfully.
+
+
+        prenot = BOO.copy()
+       
+        mqtt_data = {
+            "Producer": "Sparecube_Website",
+            "Message": "cancel_reservation",
+            "DateTime": timestamp_message,
+            "Message_Id": "Sparecube_Website:cancel_reservation:" + timestamp_message,
+            "data": {
+                "idTower": prenot['id_torre'],
+                "myBox": {
+                    "id": prenot['id_box'],
+                    "letteraVettura": prenot['waybill'],
+                    "ticket": prenot['ticket'],
+                    "statoPrenotazione": BOO['id_causaleprenotazione']
+                }
+            }
+        }
+
+        print(mqtt_data)
+
+        mqtt_msg = MQTT_MSG(
+            topic=Topics.ToLocker.uniqueLocker + str(BOO['id_locker']),
+            payload=mqtt_data
+        )
+
+        mqtt_obj.connect()
+
+        if mqtt_obj.connected:
+            mqtt_obj.publish_msg(mqtt_msg)
+
+        if not mqtt_obj.connected or not mqtt_obj.published:
+            if not mqtt_obj.connected:
+                logger.warning("MQTT NOT CONNECTED")
+            if not mqtt_obj.published:
+                logger.warning("MQTT MSG NOT PUBLISHED")
+
+            try:
+                cursor.execute(
+                    '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' and timestamp_end = ? WHERE timestamp_start = ?''',
+                    c.get_date(), rBooking['timestamp_start'])
+                cursor.commit()
+            except pyodbc.Error as err:
+                RES.dbError()
+                RES.setErrors(str(err))
+        
+        query_s = 'update Prenotazione set '
+        query_e = f" where timestamp_start = \'{rBooking['timestamp_start']}\'"
+        booking_q = booking.Booking()
+        values = booking_q.query(rBooking)
+
+        query = c.concatenate([query_s, values, query_e])
+        print("update query:\n\n")
+        print(query)
+
 
         try:
             # cursor.execute("update Prenotazione set id_causaleprenotazione = ? where timestamp_start = ?",
@@ -1331,6 +1397,7 @@ class BookingAPIView(APIView):
         try:
             cursor.execute(f"select number from Torre where id = {boo['id_torre']}")
             res = cursor.fetchone()
+
             id_torre = res[0] if res else None
 
 
@@ -1339,11 +1406,16 @@ class BookingAPIView(APIView):
             id_box = res[0] if res else None
 
 
+            if res:
+                cols = [cols[0] for cols in cursor.description]
+                print(dict(zip(cols, res)))
+
 
         except pyodbc.Error as err:
             RES.dbError()
             RES.setResult(-1)
             RES.setErrors(str(err))
+
 
         # we insert the data into the database
         try:
@@ -1360,12 +1432,52 @@ class BookingAPIView(APIView):
             # BATOUL
             # MICHELE 270425
             # MODIFICATA STRUTTURA MESSAGGIO MQTT
+
             # BATOUL.. Move the MQTT MSG Format to mqttMsg Class and manage only DB Operations in this class
             if not To_Lockers_MSGs.addReservMQTTMsg(boo, id_torre, id_box):
+
+            timestamp_message = c.get_date()
+
+            mqtt_data = {
+                "Producer": "Sparecube_Website",
+                "Message": "reserve_box",
+                "DateTime": timestamp_message,
+                "Message_Id": "Sparecube_Website:reserve_box:" + timestamp_message,
+                "Data": {
+                    "idTower": rBooking['id_torre'],
+                    "myBox": {
+                        "id": rBooking['id_box'],
+                        "letteraVettura": boo['waybill'],
+                        "ticket": boo['ticket'],
+                        "statoPrenotazione": boo['id_causaleprenotazione']
+                    }
+                }
+            }
+
+
+            print(mqtt_data)
+
+            mqtt_msg = MQTT_MSG(
+                topic=Topics.ToLocker.uniqueLocker + str(boo['id_locker']),
+                payload=mqtt_data
+            )
+
+            mqtt_obj.connect()
+
+            if mqtt_obj.connected:
+                mqtt_obj.publish_msg(mqtt_msg)
+
+            if not mqtt_obj.connected or not mqtt_obj.published:
+                if not mqtt_obj.connected:
+                    logger.warning("MQTT NOT CONNECTED")
+                if not mqtt_obj.published:
+                    logger.warning("MQTT MSG NOT PUBLISHED")
+
+
                 try:
                     cursor.execute(
-                        '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ?''',
-                        boo['id_locker'], boo['id_torre'], boo['id_cassetto'])
+                        '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ? and timestamp_end = ?''',
+                        boo['id_locker'], boo['id_torre'], boo['id_cassetto'], c.get_date())
                     cursor.commit()
                 # Logger.info(Null, "Exception during publish to")
                 except pyodbc.Error:
@@ -1383,6 +1495,7 @@ class BookingAPIView(APIView):
             RES.setErrors(str(err))
 
         return Response(RES.json(), status=status.HTTP_200_OK)
+
 
     ########## OLD VERSION TO POST NEW RESERVATION
     # def post(self, request):
@@ -1510,6 +1623,7 @@ class BookingAPIView(APIView):
     #         RES.setErrors(str(err))
     #
     #     return Response(RES.json(), status=status.HTTP_200_OK)
+
     
     def delete(self,request, id):
         # per eliminare una prenotazione
