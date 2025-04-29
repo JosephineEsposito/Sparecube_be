@@ -49,21 +49,17 @@ class To_Lockers_MSGs :
         payload=mqtt_data
         )
 
-        mqtt_obj.connect()
 
-        if mqtt_obj.connected:
-            mqtt_obj.publish_msg(mqtt_msg)
 
-        if not mqtt_obj.connected or not mqtt_obj.published:
-            if not mqtt_obj.connected:
-                logger.warning("MQTT NOT CONNECTED")
-            if not mqtt_obj.published:
-                logger.warning("MQTT MSG NOT PUBLISHED")
+        if mqtt_obj.connect():
+            if mqtt_obj.publish_msg(mqtt_msg):
+                mqtt_obj.disconnect()
+                return True
 
-            return False
+        logger.warning("MQTT MSG NOT PUBLISHED ????")
+        mqtt_obj.disconnect()
+        return False
 
-        else:
-            return True
     # endregion
 
     # region | Cancel reservation
@@ -88,19 +84,13 @@ class To_Lockers_MSGs :
             payload=mqtt_data
         )
 
-        mqtt_obj.connect()
+        if mqtt_obj.connect():
+            if mqtt_obj.publish_msg(mqtt_msg):
+                mqtt_obj.disconnect()
+                return True
 
-        if mqtt_obj.connected:
-            mqtt_obj.publish_msg(mqtt_msg)
-
-        if not mqtt_obj.connected or not mqtt_obj.published:
-            if not mqtt_obj.connected:
-                logger.warning("MQTT NOT CONNECTED")
-            if not mqtt_obj.published:
-                logger.warning("MQTT MSG NOT PUBLISHED")
-
-            return False
-        else:
-            return True
+        logger.warning("MQTT MSG NOT PUBLISHED")
+        mqtt_obj.disconnect()
+        return False
      # endregion
 

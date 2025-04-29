@@ -10,6 +10,7 @@ import logging
 import json
 import os
 
+from paho.mqtt.client import MQTT_ERR_SUCCESS
 
 #######################
 ##  Global Variable  ##
@@ -55,6 +56,7 @@ class MQTT_MSG:
 
 # region | MQTTManager Class - Handles the client connection and messaging
 class MQTTManager:
+
     def __init__(self, broker_url,broker_url_bk, broker_port=8883, client_id=None, username=None, password=None):
         self.broker_url = broker_url
         self.broker_url_bk = broker_url_bk
@@ -63,14 +65,8 @@ class MQTTManager:
         self.username = username
         self.password = password
 
-
         self.client = mqtt.Client(client_id=self.client_id)
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
-        self.client.on_message = self._on_message
 
-        self.connected = False
-        self.published = False
         self.subscriptions = {}  # topic -> callback function
         self.thread = None
 
@@ -86,111 +82,82 @@ class MQTTManager:
             cert_reqs=ssl.CERT_NONE
         )
 
-    def connect(self):
-        self._init_variables()
-        self.client.tls_insecure_set(True)  # Set to False in production with valid CA certs
-
-        brokers = [
+        self.brokers = [
             (self.broker_url, self.broker_port, "Primary"),
             (self.broker_url_bk, self.broker_port, "Backup")
         ]
 
-        self.connected = False
+        self.client.tls_insecure_set(True)  # Set to False in production with valid CA certs
 
-        for url, port, label in brokers:
+    def connect(self) -> bool:
+        print ("[MQTT] Connect: Start")
+
+        for url, port, label in self.brokers:
             try:
                 logger.info(f"Attempting MQTT connection to {label} broker at {url}:{port}")
-                self.client.connect(url, port)
-                self.connected = True
+                resultConn = self.client.connect(url, port)
                 logger.info(f"MQTT connected successfully to {label} broker.")
-                break
+                if resultConn == 0:
+                    print("[MQTT] Connect: OK")
+                    return True
             except Exception as e:
                 logger.warning(f"Failed to connect to {label} broker: {e}")
+                print("[MQTT] Connect: ERROR")
+                return False
 
-        if self.connected:
-            self.thread = threading.Thread(target=self.client.loop_forever, daemon=True)
-            self.thread.start()
-        else:
-            logger.error("Failed to connect to any MQTT broker.")
+        print("[MQTT] Connect: ERROR")
+        return False
+
 
 
     def disconnect(self):
-        self.client.disconnect()
-        self._init_variables()
-        logger.info("Disconnected from MQTT broker")
 
-    def publish_msg(self, msg: MQTT_MSG, qos=0, retain=False):
+        try:
+            print("[MQTT] Disconnect: Start")
+            self.client.disconnect()
+            logger.info("Disconnected from MQTT broker")
+            print("[MQTT] Disconnect: Ok")
+        except:
+            print("[MQTT] Disconnect: ERROR")
+
+    def publish_msg(self, msg: MQTT_MSG, qos=2, retain=False):
         self.publish(msg.topic, msg.payload, qos, retain)
 
 
 
-    def publish(self, topic: str, payload, qos=0, retain=False):
-        if not isinstance(payload, str):
-            payload = json.dumps(payload)
-
+    def publish(self, topic: str, payload, qos=2, retain=False) -> bool:
         try:
+            print("[MQTT] Publish: Start")
             # Publish and get the result object
             result = self.client.publish(topic, payload, qos=qos, retain=retain)
 
-            # Optional: wait for publish confirmation (especially for QoS 1/2)
-            result.wait_for_publish()
 
-            if result.is_published():
+            # Optional: wait for publish confirmation (especially for QoS 1/2)
+            #result.wait_for_publish(5)
+
+            if result [0] == 0:
                 logger.info(f"Published to {topic}: {payload}")
-                self.published = True
+                print("[MQTT] Publish: OK")
+                return True
+               # self.published = True
             else:
                 logger.warning(f"Failed to publish to {topic}: {payload}")
-                self.published = False
+                print("[MQTT] Publish: ERROR")
+                return False
+                #self.published = False
 
         except Exception as e:
             logger.error(f"Exception during publish to {topic}: {e}")
-            self.published = False
+            print("[MQTT] Publish: ERROR")
+            return False
+            #self.published = False
 
-    def subscribe(self, topic: str, callback, qos=0):
-        self.subscriptions[topic] = callback
-        self.client.subscribe(topic, qos)
-        logger.info(f"Subscribed to topic: {topic}")
-
-    def _on_message(self, client, userdata, msg):
-        topic = msg.topic
-        payload = msg.payload.decode()
-
-        logger.info(f"Message received on {topic}: {payload}")
-
-        handler = self.subscriptions.get(topic)
-        if handler:
-            try:
-                data = json.loads(payload)
-            except json.JSONDecodeError:
-                data = payload
-            handler(topic, data)
-        else:
-            logger.warning(f"No handler registered for topic: {topic}")
+        print("[MQTT] Publish: ERROR")
+        return False
 
 
-    def _on_connect(self,client, userdata, flags, rc):
-        if rc == 0:
-            logger.info("MQTT connected successfully.")
-            self.connected = True
-            # FOR FUTURE : SUBSCRIBE TO SOME TOPICS TO RECEIVE MESSAGES FROM THEM
-          #  self.client.subscribe("home/sensors/temperature")
-
-        else:
-            logger.error(f"MQTT failed to connect. Return code: {rc}")
-            self.connected = False
-        return self.connected
-
-    def _on_disconnect(self, client, userdata, rc):
-        self.connected = False
-        self.connect()
-        logger.warning("Disconnected from MQTT broker")
 
 
-    def _init_variables(self):
-        self.connected = False
-        self.published = False
-        self.subscriptions = {}  # topic -> callback function
-        self.thread = None
 
 
 # endregion End of MQTTManager Class
