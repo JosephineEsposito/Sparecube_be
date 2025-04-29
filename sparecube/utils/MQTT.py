@@ -55,8 +55,9 @@ class MQTT_MSG:
 
 # region | MQTTManager Class - Handles the client connection and messaging
 class MQTTManager:
-    def __init__(self, broker_url, broker_port=8883, client_id=None, username=None, password=None):
+    def __init__(self, broker_url,broker_url_bk, broker_port=8883, client_id=None, username=None, password=None):
         self.broker_url = broker_url
+        self.broker_url_bk = broker_url_bk
         self.broker_port = broker_port
         self.client_id = client_id
         self.username = username
@@ -65,7 +66,7 @@ class MQTTManager:
 
         self.client = mqtt.Client(client_id=self.client_id)
         self.client.on_connect = self._on_connect
-    #    self.client.on_disconnect = self._on_disconnect
+        self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
 
         self.connected = False
@@ -87,28 +88,31 @@ class MQTTManager:
 
     def connect(self):
         self._init_variables()
-        try:
-            # Optional: set to True for testing with self-signed certs
-            self.client.tls_insecure_set(True)  # False if you're using valid CA certs
+        self.client.tls_insecure_set(True)  # Set to False in production with valid CA certs
 
-            self.client.connect(self.broker_url, self.broker_port)
+        brokers = [
+            (self.broker_url, self.broker_port, "Primary"),
+            (self.broker_url_bk, self.broker_port, "Backup")
+        ]
 
-        #    self.client.on_connect = self._on_connect
-            if self.client.on_connect:
-                logger.info("MQTT connected successfully.")
+        self.connected = False
+
+        for url, port, label in brokers:
+            try:
+                logger.info(f"Attempting MQTT connection to {label} broker at {url}:{port}")
+                self.client.connect(url, port)
                 self.connected = True
-            else:
-                logger.error(f"MQTT failed to connect.")
-                self.connected = False
+                logger.info(f"MQTT connected successfully to {label} broker.")
+                break
+            except Exception as e:
+                logger.warning(f"Failed to connect to {label} broker: {e}")
 
-
+        if self.connected:
             self.thread = threading.Thread(target=self.client.loop_forever, daemon=True)
             self.thread.start()
+        else:
+            logger.error("Failed to connect to any MQTT broker.")
 
-            logger.info(f"Connecting to MQTT broker at {self.broker_url}:{self.broker_port}")
-
-        except Exception as e:
-            logger.error(f"MQTT connection error: {e}")
 
     def disconnect(self):
         self.client.disconnect()
@@ -178,6 +182,7 @@ class MQTTManager:
 
     def _on_disconnect(self, client, userdata, rc):
         self.connected = False
+        self.connect()
         logger.warning("Disconnected from MQTT broker")
 
 
@@ -194,6 +199,7 @@ class MQTTManager:
 # region | MQTT Object
 mqtt_obj = MQTTManager(
     broker_url=os.getenv("MQTT_BROKER_URL"),
+    broker_url_bk=os.getenv("MQTT_BROKER_URL_BK"),
     broker_port=int(os.getenv("MQTT_BROKER_PORT", 8883)),
     client_id=os.getenv("MQTT_CLIENT_ID"),
     username=os.getenv("MQTT_USERNAME"),
