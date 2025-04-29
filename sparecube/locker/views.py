@@ -1138,10 +1138,13 @@ class BookingAPIView(APIView):
        
         # Author: @josephineesposito - 27042025
         # AGGIUNTA STRUTTURA MESSAGGIO MQTT
-
+        timestamp_message = c.get_date()
+        
         mqtt_data = {
-            'producer': 'BE',
-            'message': 'Setta_Prenotazione',  
+            "Producer" : "Sparecube_Website",
+            "Message" : "cancel_reservation",
+            "DateTime" : timestamp_message,
+            "Message_Id" : " Sparecube_Website: cancel_reservation:"+timestamp_message,
                 'data': {
                     'idTower': prenot['id_torre'],
                     'myBox': {
@@ -1274,11 +1277,14 @@ class BookingAPIView(APIView):
             # BATOUL
             # MICHELE 270425
             # MODIFICATA STRUTTURA MESSAGGIO MQTT
+            timestamp_message = c.get_date()
 
             mqtt_data = {
-                'producer': 'BE',
-                'message': 'Setta_Prenotazione',  
-                    'data': {
+                "Producer" : "Sparecube_Website",
+                "Message" : "reserve_box",
+                "DateTime" : timestamp_message,
+                "Message_Id" : " Sparecube_Website:reserve_box:"+timestamp_message,
+                    'Data': {
                         'idTower': rBooking['id_torre'],
                         'myBox': {
                             'id': rBooking['id_box'],
