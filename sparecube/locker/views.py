@@ -1136,24 +1136,20 @@ class BookingAPIView(APIView):
 
         prenot = BOO.copy()
        
-        # Author: @josephineesposito - 27042025
-        # AGGIUNTA STRUTTURA MESSAGGIO MQTT
-        timestamp_message = c.get_date()
-        
         mqtt_data = {
-            "Producer" : "Sparecube_Website",
-            "Message" : "cancel_reservation",
-            "DateTime" : timestamp_message,
-            "Message_Id" : " Sparecube_Website: cancel_reservation:"+timestamp_message,
-                'data': {
-                    'idTower': prenot['id_torre'],
-                    'myBox': {
-                        'id': prenot['id_box'],
-                        'letteraVettura': prenot['waybill'],
-                        'ticket': prenot['ticket'],
-                        'statoPrenotazione': BOO['id_causaleprenotazione']           
-                    }
+            "Producer": "Sparecube_Website",
+            "Message": "cancel_reservation",
+            "DateTime": timestamp_message,
+            "Message_Id": "Sparecube_Website:cancel_reservation:" + timestamp_message,
+            "data": {
+                "idTower": prenot['id_torre'],
+                "myBox": {
+                    "id": prenot['id_box'],
+                    "letteraVettura": prenot['waybill'],
+                    "ticket": prenot['ticket'],
+                    "statoPrenotazione": BOO['id_causaleprenotazione']
                 }
+            }
         }
 
         print(mqtt_data)
@@ -1280,20 +1276,21 @@ class BookingAPIView(APIView):
             timestamp_message = c.get_date()
 
             mqtt_data = {
-                "Producer" : "Sparecube_Website",
-                "Message" : "reserve_box",
-                "DateTime" : timestamp_message,
-                "Message_Id" : " Sparecube_Website:reserve_box:"+timestamp_message,
-                    'Data': {
-                        'idTower': rBooking['id_torre'],
-                        'myBox': {
-                            'id': rBooking['id_box'],
-                            'letteraVettura': boo['waybill'],
-                            'ticket': boo['ticket'],
-                            'statoPrenotazione': boo['id_causaleprenotazione']           
-                        }
+                "Producer": "Sparecube_Website",
+                "Message": "reserve_box",
+                "DateTime": timestamp_message,
+                "Message_Id": "Sparecube_Website:reserve_box:" + timestamp_message,
+                "Data": {
+                    "idTower": rBooking['id_torre'],
+                    "myBox": {
+                        "id": rBooking['id_box'],
+                        "letteraVettura": boo['waybill'],
+                        "ticket": boo['ticket'],
+                        "statoPrenotazione": boo['id_causaleprenotazione']
                     }
+                }
             }
+
 
             print(mqtt_data)
 
