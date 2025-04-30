@@ -52,14 +52,12 @@ class To_Lockers_MSGs :
 
 
         if mqtt_obj.connect():
-            if mqtt_obj.publish_msg(mqtt_msg):
-                mqtt_obj.disconnect()
-                return True
+                if mqtt_obj.publish_msg(mqtt_msg):
+                    return True
 
-        else:
-            logger.warning("MQTT MSG NOT PUBLISHED ????")
-            mqtt_obj.disconnect()
-            return False
+
+        logger.warning("MQTT MSG NOT PUBLISHED ????")
+        return False
 
 
 
@@ -89,12 +87,10 @@ class To_Lockers_MSGs :
 
         if mqtt_obj.connect():
             if mqtt_obj.publish_msg(mqtt_msg):
-                mqtt_obj.disconnect()
                 return True
 
-        else:
-            logger.warning("MQTT MSG NOT PUBLISHED")
-            mqtt_obj.disconnect()
-            return False
+
+        logger.warning("MQTT MSG NOT PUBLISHED")
+        return False
      # endregion
 

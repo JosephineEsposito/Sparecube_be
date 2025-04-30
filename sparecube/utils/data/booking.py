@@ -18,6 +18,7 @@ class Booking():
             self.id_torre                   = None
             self.id_cassetto                = None
             self.id_causaleprenotazione     = None
+            self.operation_type             = None
         else:
             # initialize attributes with values from args dictionary (from database)
             self.timestamp_start            = args.get('timestamp_start')
@@ -29,6 +30,7 @@ class Booking():
             self.id_torre                   = args.get('id_torre')
             self.id_cassetto                = args.get('id_cassetto')
             self.id_causaleprenotazione     = args.get('id_causaleprenotazione')
+            self.operation_type             = args.get('operation_type')
     
     def json(self):
         data = {}
@@ -42,7 +44,7 @@ class Booking():
         if self.id_torre                : data['id_torre']                      = self.id_torre
         if self.id_cassetto             : data['id_cassetto']                   = self.id_cassetto
         if self.id_causaleprenotazione  : data['id_causaleprenotazione']        = self.id_causaleprenotazione
-
+        if self.operation_type          : data['operation_type']                = self.operation_type
         return data
     
     def clean(self):
@@ -55,6 +57,7 @@ class Booking():
         self.id_torre                   = None
         self.id_cassetto                = None
         self.id_causaleprenotazione     = None
+        self.operation_type             = None
 
     def base(self):
         return {
@@ -67,6 +70,7 @@ class Booking():
             "id_torre" : 0,
             "id_cassetto" : 0,
             "id_causaleprenotazione" : 0,
+            "operation_type" : 0,
         }
     
     def query(self, o):
@@ -87,6 +91,8 @@ class Booking():
             data.append(f"id_causaleprenotazione = \'{o['id_causaleprenotazione']}\'")
             if o['id_causaleprenotazione'] == 'CLOSED' or o['id_causaleprenotazione'] == 'CANCELLED' or o['id_causaleprenotazione'] == 'FAILED':
                 data.append(f"timestamp_end = \'{c.get_date()}\'")
+        if "operation_type" in o:
+            data.append(f"operation_type = {o['operation_type']}")
         
         tmp = []
         for i in range(len(data)):
@@ -118,6 +124,7 @@ class Booking():
         else                            : data['id_cassetto']                   = None
         if self.id_causaleprenotazione  : data['id_causaleprenotazione']        = self.id_causaleprenotazione
         else                            : data['id_causaleprenotazione']        = None
-
+        if self.operation_type          : data['operation_type']                = self.operation_type
+        else                            : data['operation_type']                = None
         return data
 
