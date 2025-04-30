@@ -1146,7 +1146,7 @@ class BookingAPIView(APIView):
 
         #we check if the locker exists in our database
 
-        query = f"select p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, c.id_torre, c.id_box from Prenotazione p, Cassetto c where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id"
+        query = f"select p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, t.number as id_torre, c.id_box from Prenotazione p, Cassetto c, Torre t where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id and p.id_torre = t.id"
         cursor.execute(query)
         res = cursor.fetchone()
         if not res:
@@ -1162,7 +1162,6 @@ class BookingAPIView(APIView):
         # Batoul..
         # Move forming MQTT Msg to mqttMsg class
         # Make the reservation status updated to the new status if only the mqtt msg published successfully.
-
 
         prenot = BOO.copy()
 
