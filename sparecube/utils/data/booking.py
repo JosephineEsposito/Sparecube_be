@@ -64,6 +64,7 @@ class Booking():
         self.id_torre                   = None
         self.id_cassetto                = None
         self.id_causaleprenotazione     = None
+        self.operation_type             = None
 
     def base(self):
         return {
@@ -132,6 +133,5 @@ class Booking():
         else                            : data['id_causaleprenotazione']        = None
         if self.operation_type          : data['operation_type']                = self.operation_type
         else                            : data['operation_type']                = None
-
         return data
 

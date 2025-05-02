@@ -1146,7 +1146,7 @@ class BookingAPIView(APIView):
 
         #we check if the locker exists in our database
 
-        query = f"select p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, t.number as id_torre, c.id_box from Prenotazione p, Cassetto c, Torre t where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id and p.id_torre = t.id"
+        query = f"select c.is_full, p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, t.number as id_torre, c.id_box from Prenotazione p, Cassetto c, Torre t where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id and p.id_torre = t.id"
         cursor.execute(query)
         res = cursor.fetchone()
         if not res:
@@ -1168,6 +1168,15 @@ class BookingAPIView(APIView):
         try:
             # cursor.execute("update Prenotazione set id_causaleprenotazione = ? where timestamp_start = ?",
             #                (rBooking['id_causaleprenotazione'], rBooking['timestamp_start']))
+
+            if prenot['is_full'] == True:
+                RES.setResult(0)
+                RES.setMessage('The Box is full ')
+                print('The Box is full ')
+                return Response(RES.json(), status=status.HTTP_200_OK)
+
+
+
 
             if To_Lockers_MSGs.cancelReservMQTTMsg(prenot):
                 cursor.execute("update Prenotazione set id_causaleprenotazione = ? where timestamp_start = ?",
@@ -1382,6 +1391,96 @@ class BookingAPIView(APIView):
                         '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ?''',
                         boo['id_locker'], boo['id_torre'], boo['id_cassetto'])
                     cursor.commit()
+
+                    # To work on SDA API
+                    # if boo['operation_type'] == 2:
+                    #     import requests
+                    #     import json
+                    #
+                    #
+                    #     sda_url = 'https://collaudo-wsrest.sda.it/WS-RITIRI-WEB/rest/inserisciRitiroActionService'
+                    #
+                    #
+                    #     sda_username = 'YOUR_USERNAME'
+                    #     sda_password = 'YOUR_PASSWORD'
+                    #
+                    #
+                    #     sda_payload = {
+                    #         "mittente": {
+                    #             "cap": "00118",
+                    #             "citofono": "123",
+                    #             "codiceCliente": "000000000012",
+                    #             "email": "mittente@example.com",
+                    #             "indirizzo": "Via del Pescaccio, 90",
+                    #             "interno": "1",
+                    #             "localita": "Roma",
+                    #             "nominativoContatto": "Mario Rossi",
+                    #             "oraAperturaMattino": "08:00",
+                    #             "oraAperturaPomeriggio": "14:00",
+                    #             "palazzina": "1",
+                    #             "partitaIva": "01234567890",
+                    #             "provincia": "RM",
+                    #             "ragioneSociale": "Mittente SRL",
+                    #             "ritiroPressoPortineria": "false",
+                    #             "scala": "A",
+                    #             "telefono": "060606",
+                    #             "ufficio": "SEGRETERIA"
+                    #         },
+                    #         "destinatario": {
+                    #             "cap": "00118",
+                    #             "citofono": "123",
+                    #             "codiceCliente": "000000000012",
+                    #             "email": "dest@example.com",
+                    #             "indirizzo": "Via del Pescaccio, 90",
+                    #             "interno": "9",
+                    #             "localita": "Roma",
+                    #             "nominativoContatto": "Luca Vellucci",
+                    #             "oraAperturaMattino": "09:00",
+                    #             "oraAperturaPomeriggio": "15:00",
+                    #             "palazzina": "1",
+                    #             "partitaIva": "02010250658",
+                    #             "provincia": "RM",
+                    #             "ragioneSociale": "Destinatario SRL",
+                    #             "ritiroPressoPortineria": "false",
+                    #             "scala": "A",
+                    #             "telefono": "060606",
+                    #             "ufficio": "SEGRETERIA"
+                    #         },
+                    #         "ritiro": {
+                    #             "dataRichiesta": boo['timestamp_start'],
+                    #             "note1": "Prenotazione da sistema",
+                    #             "dataRitiro": boo['timestamp_end'],
+                    #             "tiporitiro": {
+                    #                 "buste": {
+                    #                     "numeroColli": "1",
+                    #                     "peso": "1"
+                    #                 },
+                    #                 "servizio": "PF"
+                    #             }
+                    #         },
+                    #         "idSemeLdv": "10538",
+                    #         "codCliPagante": "000000000012"
+                    #     }
+                    #
+                    #     try:
+                    #         response = requests.post(
+                    #             sda_url,
+                    #             auth=(sda_username, sda_password),
+                    #             headers={'Content-Type': 'application/json'},
+                    #             data=json.dumps(sda_payload),
+                    #             timeout=10
+                    #         )
+                    #
+                    #         if response.status_code == 200:
+                    #             RES.setMessage(RES.getMessage() + ' Invio a SDA riuscito.')
+                    #         else:
+                    #             RES.setMessage(RES.getMessage() + f' Invio a SDA fallito: {response.status_code}')
+                    #             RES.setErrors(response.text)
+                    #     except requests.RequestException as e:
+                    #         RES.setMessage(RES.getMessage() + ' Errore durante invio a SDA.')
+                    #         RES.setErrors(str(e))
+
+
                 # Logger.info(Null, "Exception during publish to")
                 except pyodbc.Error:
                     RES.dbError()
