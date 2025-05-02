@@ -8,11 +8,13 @@ class Locker():
     def __init__(self, args = None):
         if args is None:
             self.id             = None
+            self.city           = None
             self.localita       = None
             self.id_azienda     = None
             self.status         = None
         else:
             self.id             = args.get("id")
+            self.city           = args.get("city")
             self.localita       = args.get("localita")
             self.id_azienda     = args.get("id_azienda")
             self.status         = args.get("status")
@@ -20,6 +22,7 @@ class Locker():
     def json(self):
         data = {}
         if self.id:         data['id']          = self.id
+        if self.city:         data['city']          = self.city
         if self.localita:   data['localita']    = self.localita
         if self.id_azienda: data['id_azienda']  = self.id_azienda
         if self.status:     data['status']      = self.status

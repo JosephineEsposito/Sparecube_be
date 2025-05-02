@@ -578,7 +578,7 @@ class LockersAPIView(APIView):
             if user['account_type'] == 'OPERATOR':
                 cursor.execute("select id, localita from Locker")
             else:
-                cursor.execute("select L.id, LO.name as localita, L.id_azienda, L.status from Locker as L, Localita as LO where L.localita = LO.id")
+                cursor.execute("select L.id, LO.city as city, LO.road as localita, L.id_azienda, L.status from Locker as L, Localita as LO where L.localita = LO.id")
             res = cursor.fetchall()
 
             if res:
@@ -1361,10 +1361,10 @@ class BookingAPIView(APIView):
 
         # we insert the data into the database
         try:
-            cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione)
-                                     values(?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'],
+            cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione, operation_type)
+                                     values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'],
                            boo['id_torre'], boo['id_cassetto'], boo['timestamp_end'], boo['waybill'], boo['ticket'],
-                           user['id'], boo['id_causaleprenotazione'])
+                           user['id'], boo['id_causaleprenotazione'], boo['operation_type'])
 
             cursor.commit()
 
@@ -1609,7 +1609,7 @@ class BookingsAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user['account_type'] == 'USER': #solo per amministratori e utenti
+        if user['account_type'] == 'USER': #solo per amministratori e operatori
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -1625,10 +1625,12 @@ class BookingsAPIView(APIView):
         bookings = []
         try:
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto
-                                    from Prenotazione as P, Torre as T, Cassetto as C
+                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road
+                                    from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc
                                     where P.id_cassetto = C.id
                                     and P.id_torre = T.id
+                                    and T.id_locker = lk.id
+                                    and lk.localita = lc.id
                                     and id_utente = ?""", (user['id'], ))
             else:
                 cursor.execute("select * from Prenotazione")
@@ -1808,10 +1810,12 @@ class BookLocAPIView(APIView):
         query = []
         try:
             cursor.execute("""
-                            select timestamp_start, timestamp_end, waybill, ticket, id_utente, id_locker, id_cassetto, city, road, id_causaleprenotazione
-                            from Prenotazione as p, Localita as lc, Locker as lk
+                            select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket, p.id_utente, p.id_locker, c.id_box as id_cassetto, t.number as id_torre, lc.city, lc.road, p.id_causaleprenotazione
+                            from Prenotazione as p, Localita as lc, Locker as lk, Torre as t, Cassetto as c
                             where p.id_locker = lk.id
                             and lk.localita = lc.id
+                            and p.id_torre = t.id
+                            and p.id_cassetto = c.id
                             """)
             res = cursor.fetchall()
 
@@ -1862,17 +1866,30 @@ class TowersDrawersAPIView(APIView):
             return Response(RES.json(), status=status.HTTP_200_OK)
         cursor = connection['connection'].cursor()
 
-        #query
-        try:
-            lockers = []
-            cursor.execute("""
+        query = ""
+        if user['account_type'] == 'ADMIN':
+            query = """
+                            select t.id_locker, t.number as id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
+                            from Torre as t
+                            join Cassetto c on c.id_torre = t.id
+                            join Locker l on t.id_locker = l.id
+                            left join Prenotazione P on p.id_cassetto = c.id
+                            where p.id_causaleprenotazione is null or p.id_causaleprenotazione != 'OPEN'
+                            """
+        if user['account_type'] == 'OPERATOR':
+            query = """
                             select t.id_locker, c.id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
                             from Torre as t
                             join Cassetto c on c.id_torre = t.id
                             join Locker l on t.id_locker = l.id
                             left join Prenotazione P on p.id_cassetto = c.id
                             where p.id_causaleprenotazione is null or p.id_causaleprenotazione != 'OPEN'
-                            """)
+                            """
+
+        #query
+        try:
+            lockers = []
+            cursor.execute(query)
             res = cursor.fetchall()
 
             if res:
