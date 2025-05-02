@@ -270,7 +270,7 @@ class LocationsAPIView(APIView):
             locations = []
 
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("SELECT id, name FROM Localita")
+                cursor.execute("select L.*, LO.id as id_locker from Localita as L left join Locker as LO on L.id = LO.localita") #"SELECT id, name FROM Localita"
                 res = cursor.fetchall()
 
                 if res:
