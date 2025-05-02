@@ -270,7 +270,7 @@ class LocationsAPIView(APIView):
             locations = []
 
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("select L.*, LO.id as id_locker from Localita as L left join Locker as LO on L.id = LO.localita") #"SELECT id, name FROM Localita"
+                cursor.execute("SELECT id, name FROM Localita")
                 res = cursor.fetchall()
 
                 if res:
@@ -326,6 +326,59 @@ class LocationsAPIView(APIView):
             RES.setErrors(str(err))
 
         return Response(RES.json(), status=status.HTTP_200_OK)
+
+
+"""
+Class to get all Locations for map
+"""
+class LocationMapView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    def get(self, request):
+        # ritorna tutti i dettagli di tutte le locations
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+
+        #permissions
+        if user["account_type"] != 'OPERATOR': # solo per operatori
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        #database connection
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(str(connection['connection']))
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        #query
+        try:
+            locations = []
+
+            if user['account_type'] == 'OPERATOR':
+                cursor.execute("select L.*, LO.id as id_locker from Localita as L left join Locker as LO on L.id = LO.localita")
+                res = cursor.fetchall()
+
+                if res:
+                    cols = [col[0] for col in cursor.description]
+                    for row in res:
+                        LOC = location.Location(dict(zip(cols, row)))
+                        locations.append(LOC.json())
+
+            cursor.close()
+            connection['connection'].close()
+
+            RES.setData(locations)
+
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+
+        return Response(RES.json(), status=status.HTTP_200_OK)
+
 
 #endregion
 # ====================.====================.====================.====================.==================== #

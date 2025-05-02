@@ -34,7 +34,8 @@ class To_Lockers_MSGs :
                 'id': id_box,
                 'letteraVettura': self['waybill'],
                 'ticket': self['ticket'],
-                'statoPrenotazione': self['id_causaleprenotazione']
+                'statoPrenotazione': self['id_causaleprenotazione'],
+                'operation_type': self['operation_type']
             }
         }
 
