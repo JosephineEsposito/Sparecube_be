@@ -2040,7 +2040,7 @@ class TowersDrawersAPIView(APIView):
                             JOIN Cassetto c ON c.id_torre = t.id
                             JOIN Locker l ON t.id_locker = l.id
                             LEFT JOIN UltimaPrenotazione p ON p.id_cassetto = c.id AND p.rn = 1
-                            WHERE p.id_causaleprenotazione IS NULL OR p.id_causaleprenotazione != 'OPEN'
+                            
                             """
         if user['account_type'] == 'OPERATOR':
             query = """
