@@ -2021,12 +2021,26 @@ class TowersDrawersAPIView(APIView):
         query = ""
         if user['account_type'] == 'ADMIN':
             query = """
-                            select t.id_locker, t.number as id_torre, c.id_box, c.width, c.height, c.depth, c.status, c.is_full, c.is_open
-                            from Torre as t
-                            join Cassetto c on c.id_torre = t.id
-                            join Locker l on t.id_locker = l.id
-                            left join Prenotazione P on p.id_cassetto = c.id
-                            where p.id_causaleprenotazione is null or p.id_causaleprenotazione != 'OPEN'
+                            WITH UltimaPrenotazione AS (
+                                SELECT *, 
+                                    ROW_NUMBER() OVER (PARTITION BY id_cassetto ORDER BY timestamp_start DESC) as rn
+                                FROM Prenotazione
+                            )
+                            SELECT 
+                                t.id_locker, 
+                                t.number AS id_torre, 
+                                c.id_box, 
+                                c.width, 
+                                c.height, 
+                                c.depth, 
+                                c.status, 
+                                c.is_full, 
+                                c.is_open
+                            FROM Torre t
+                            JOIN Cassetto c ON c.id_torre = t.id
+                            JOIN Locker l ON t.id_locker = l.id
+                            LEFT JOIN UltimaPrenotazione p ON p.id_cassetto = c.id AND p.rn = 1
+                            WHERE p.id_causaleprenotazione IS NULL OR p.id_causaleprenotazione != 'OPEN'
                             """
         if user['account_type'] == 'OPERATOR':
             query = """
