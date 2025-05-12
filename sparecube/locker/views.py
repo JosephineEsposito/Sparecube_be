@@ -1433,20 +1433,42 @@ class BookingAPIView(APIView):
         all_results = cursor.fetchall()
         column_names = [desc[0] for desc in cursor.description]
 
+        ticket = 0
+        waybill = 0
+
+
 
         for row in all_results:
             row_dict = dict(zip(column_names, row))
             if boo['ticket'] == row_dict['ticket']:
                 print(f"ticket not unique")
-                RES.setResult(0)
-                RES.setMessage('ticket not unique.')
-                return Response(RES.json(), status=status.HTTP_200_OK)
+                ticket = ticket + 1
+                # RES.setResult(0)
+                # RES.setMessage('ticket not unique.')
+                # return Response(RES.json(), status=status.HTTP_200_OK)
 
             if boo['waybill'] == row_dict['waybill']:
                 print(f"waybill not unique")
-                RES.setResult(0)
-                RES.setMessage('waybill not unique.')
-                return Response(RES.json(), status=status.HTTP_200_OK)
+                waybill = waybill + 1
+                # RES.setResult(0)
+                # RES.setMessage('waybill not unique.')
+                # return Response(RES.json(), status=status.HTTP_200_OK)
+
+        if ticket > 0 and waybill > 0:
+            RES.setResult(0)
+            RES.setMessage('ticket and waybill not unique.')
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        if ticket > 0 and waybill == 0:
+            RES.setResult(0)
+            RES.setMessage('ticket and unique.')
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        if waybill > 0 and ticket == 0:
+            RES.setResult(0)
+            RES.setMessage('waybill and unique.')
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
 
 
         # we get the tower number
@@ -1484,21 +1506,29 @@ class BookingAPIView(APIView):
 
 
             cursor.commit()
-
             RES.setResult(0)
             RES.setMessage('Prenotazione inserita.')
 
+            cursor.execute('select loc.* from Locker l join Localita loc on l.localita = loc.id where l.id = ?', boo['id_locker'])
+            row = cursor.fetchone()
+            column_names = [desc[0] for desc in cursor.description]
+            lockerLoc = dict(zip(column_names, row))
 
+            userList = [user_data, supervisor_user]
 
             subject = "Nuova Prenotazione"
-            body = f"L'utente {user_data["first_name"].capitalize()} {user_data["last_name"].capitalize()} ha inserito una nuova prenotazione."
-            email_list = [user_data['email'], supervisor_user.email] if supervisor_user else [user_data['email']]
-           # nameList = [Concat(user['first_name'],user['last_name']), Concat(supervisor_user['first_name'].,supervisor_user['last_name'])]
 
-            nameList = [
-                f"{user_data["first_name"].capitalize()} {user_data["last_name"].capitalize()}",
-                f"{supervisor_user.first_name.capitalize()} {supervisor_user.last_name.capitalize()}"
-            ]
+
+            body = (
+                f"L'utente {user_data['first_name'].capitalize()} {user_data['last_name'].capitalize()} ha inserito una nuova prenotazione:<br><br>"
+                f"- Lettera di vettura: {boo['waybill']}<br>"
+                f"- Ticket: {boo['ticket']}<br><br>"
+                "Locker assegnato:<br>"
+                f"Locker Nr.{boo['id_locker']}<br>"
+                f"{lockerLoc['road']}<br>"
+                f"{lockerLoc['postalcode']}<br>"
+                f"{lockerLoc['city']} ({lockerLoc['provincia']})"
+            )
 
 
             if not To_Lockers_MSGs.addReservMQTTMsg(boo, id_torre, id_box):
@@ -1507,10 +1537,10 @@ class BookingAPIView(APIView):
                         '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ?''',
                         boo['id_locker'], boo['id_torre'], boo['id_cassetto'])
                     cursor.commit()
-                    RES.setMessage('prenotazione fallita.')
+                    RES.setMessage('Prenotazione fallita')
 
-                    subject = "Prenotazione non riuscita"
-                    body = f"prenotazione da parte dell'utente: {user['username']}non è riuscita"
+                    subject = "Prenotazione Fallita"
+                    body = f"Prenotazione da parte dell'utente {user['username']} non riuscita"
 
                 # Logger.info(Null, "Exception during publish to")
                 except pyodbc.Error:
@@ -1519,8 +1549,8 @@ class BookingAPIView(APIView):
             cursor.close()
             connection['connection'].close()
 
-
-            email.send(subject, body, email_list, nameList)
+            chimp = email.MailChimp()
+            chimp.send(subject, body, userList)
 
 
         except pyodbc.Error as err:
