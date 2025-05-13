@@ -1,4 +1,5 @@
 #region | IMPORTS
+from django.db.models.functions import Concat
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -26,12 +27,15 @@ from utils.data import tower
 from utils.data import drawer
 # for Prenotazione
 from utils.data import booking
+from utils.data import user
 # for Logs
 from utils.data import log
 # for MQTT
 from locker.mqttMsg import To_Lockers_MSGs
 from utils.MQTT import mqtt_obj, MQTT_MSG, Topics
 import logging
+# for mailersend
+from utils import email
 
 #endregion
 
@@ -1358,7 +1362,7 @@ class BookingAPIView(APIView):
         # per aggiungere nuove prenotazioni
         RES.clean()
         serializer = self.serializer_class(request.user)
-        user = serializer.data
+        user_data = serializer.data
         rBooking = request.data
 
         # permissions -> tutti i profili possono creare una prenotazione
@@ -1382,6 +1386,32 @@ class BookingAPIView(APIView):
 
         timestamp = c.get_date()
 
+        # region Get the supervisor user
+        supervisor_id = rBooking.get("id_supervisor")
+        print(f"id_supervisor: {supervisor_id}")
+       # supervisor_data = None
+        if supervisor_id:
+            try:
+                query = f"SELECT id, id_azienda, first_name, last_name, username, email, account_type, is_active, is_staff, is_superuser FROM account_utente WHERE id = ?"
+                print (query)
+                cursor.execute(query,supervisor_id)
+                row = cursor.fetchone()
+                if row:
+                    cols = [column[0] for column in cursor.description]
+                    supervisor_data = dict(zip(cols, row))
+            except pyodbc.Error as err:
+                RES.dbError()
+                RES.setErrors(str(err))
+                return Response(RES.json(), status=status.HTTP_200_OK)
+
+        print("supervisor_ data", supervisor_data)
+
+        supervisor_user = user.User(supervisor_data) # if supervisor_data else None
+        print("supervisor", supervisor_user)
+        # endregion
+
+
+
         # query
         cursor.execute(f"select * from Prenotazione where timestamp_start = \'{timestamp}\'")
         res = cursor.fetchone()
@@ -1394,8 +1424,52 @@ class BookingAPIView(APIView):
         boo = booking.Booking(rBooking)
         boo = boo.validate()
 
+
+
         # variables
         boo['timestamp_start'] = c.get_date()
+
+        cursor.execute("select * from Prenotazione")
+        all_results = cursor.fetchall()
+        column_names = [desc[0] for desc in cursor.description]
+
+        ticket = 0
+        waybill = 0
+
+
+
+        for row in all_results:
+            row_dict = dict(zip(column_names, row))
+            if boo['ticket'] == row_dict['ticket']:
+                print(f"ticket not unique")
+                ticket = ticket + 1
+                # RES.setResult(0)
+                # RES.setMessage('ticket not unique.')
+                # return Response(RES.json(), status=status.HTTP_200_OK)
+
+            if boo['waybill'] == row_dict['waybill']:
+                print(f"waybill not unique")
+                waybill = waybill + 1
+                # RES.setResult(0)
+                # RES.setMessage('waybill not unique.')
+                # return Response(RES.json(), status=status.HTTP_200_OK)
+
+        if ticket > 0 and waybill > 0:
+            RES.setResult(0)
+            RES.setMessage('ticket and waybill not unique.')
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        if ticket > 0 and waybill == 0:
+            RES.setResult(0)
+            RES.setMessage('ticket and unique.')
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+        if waybill > 0 and ticket == 0:
+            RES.setResult(0)
+            RES.setMessage('waybill and unique.')
+            return Response(RES.json(), status=status.HTTP_200_OK)
+
+
 
         # we get the tower number
         try:
@@ -1421,158 +1495,62 @@ class BookingAPIView(APIView):
             RES.setErrors(str(err))
 
 
+
+
         # we insert the data into the database
         try:
-            cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione, operation_type)
-                                     values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'],
+            cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione, operation_type, id_supervisor)
+                                     values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'],
                            boo['id_torre'], boo['id_cassetto'], boo['timestamp_end'], boo['waybill'], boo['ticket'],
-                           user['id'], boo['id_causaleprenotazione'], boo['operation_type'])
+                           user_data['id'], boo['id_causaleprenotazione'], boo['operation_type'], supervisor_user.id)
+
 
             cursor.commit()
-
             RES.setResult(0)
             RES.setMessage('Prenotazione inserita.')
 
-            # BATOUL
-            # MICHELE 270425
-            # MODIFICATA STRUTTURA MESSAGGIO MQTT
+            cursor.execute('select loc.* from Locker l join Localita loc on l.localita = loc.id where l.id = ?', boo['id_locker'])
+            row = cursor.fetchone()
+            column_names = [desc[0] for desc in cursor.description]
+            lockerLoc = dict(zip(column_names, row))
 
-            # BATOUL.. Move the MQTT MSG Format to mqttMsg Class and manage only DB Operations in this class
+            userList = [user_data, supervisor_user]
+
+            subject = "Nuova Prenotazione"
+
+
+            body = (
+                f"L'utente {user_data['first_name'].capitalize()} {user_data['last_name'].capitalize()} ha inserito una nuova prenotazione:<br><br>"
+                f"- Lettera di vettura: {boo['waybill']}<br>"
+                f"- Ticket: {boo['ticket']}<br><br>"
+                "Locker assegnato:<br>"
+                f"Locker Nr.{boo['id_locker']}<br>"
+                f"{lockerLoc['road']}<br>"
+                f"{lockerLoc['postalcode']}<br>"
+                f"{lockerLoc['city']} ({lockerLoc['provincia']})"
+            )
+
+
             if not To_Lockers_MSGs.addReservMQTTMsg(boo, id_torre, id_box):
                 try:
                     cursor.execute(
                         '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ?''',
                         boo['id_locker'], boo['id_torre'], boo['id_cassetto'])
                     cursor.commit()
+                    RES.setMessage('Prenotazione fallita')
 
-                    # To work on SDA API
-                    # if boo['operation_type'] == 2:
-                    #     import requests
-                    #     import json
-                    #
-                    #
-                    #     sda_url = 'https://collaudo-wsrest.sda.it/WS-RITIRI-WEB/rest/inserisciRitiroActionService'
-                    #
-                    #
-                    #     sda_username = 'YOUR_USERNAME'
-                    #     sda_password = 'YOUR_PASSWORD'
-                    #
-                    #
-                    #     sda_payload = {
-                    #         "mittente": {
-                    #             "cap": "00118",
-                    #             "citofono": "123",
-                    #             "codiceCliente": "000000000012",
-                    #             "email": "mittente@example.com",
-                    #             "indirizzo": "Via del Pescaccio, 90",
-                    #             "interno": "1",
-                    #             "localita": "Roma",
-                    #             "nominativoContatto": "Mario Rossi",
-                    #             "oraAperturaMattino": "08:00",
-                    #             "oraAperturaPomeriggio": "14:00",
-                    #             "palazzina": "1",
-                    #             "partitaIva": "01234567890",
-                    #             "provincia": "RM",
-                    #             "ragioneSociale": "Mittente SRL",
-                    #             "ritiroPressoPortineria": "false",
-                    #             "scala": "A",
-                    #             "telefono": "060606",
-                    #             "ufficio": "SEGRETERIA"
-                    #         },
-                    #         "destinatario": {
-                    #             "cap": "00118",
-                    #             "citofono": "123",
-                    #             "codiceCliente": "000000000012",
-                    #             "email": "dest@example.com",
-                    #             "indirizzo": "Via del Pescaccio, 90",
-                    #             "interno": "9",
-                    #             "localita": "Roma",
-                    #             "nominativoContatto": "Luca Vellucci",
-                    #             "oraAperturaMattino": "09:00",
-                    #             "oraAperturaPomeriggio": "15:00",
-                    #             "palazzina": "1",
-                    #             "partitaIva": "02010250658",
-                    #             "provincia": "RM",
-                    #             "ragioneSociale": "Destinatario SRL",
-                    #             "ritiroPressoPortineria": "false",
-                    #             "scala": "A",
-                    #             "telefono": "060606",
-                    #             "ufficio": "SEGRETERIA"
-                    #         },
-                    #         "ritiro": {
-                    #             "dataRichiesta": boo['timestamp_start'],
-                    #             "note1": "Prenotazione da sistema",
-                    #             "dataRitiro": boo['timestamp_end'],
-                    #             "tiporitiro": {
-                    #                 "buste": {
-                    #                     "numeroColli": "1",
-                    #                     "peso": "1"
-                    #                 },
-                    #                 "servizio": "PF"
-                    #             }
-                    #         },
-                    #         "idSemeLdv": "10538",
-                    #         "codCliPagante": "000000000012"
-                    #     }
-                    #
-                    #     try:
-                    #         response = requests.post(
-                    #             sda_url,
-                    #             auth=(sda_username, sda_password),
-                    #             headers={'Content-Type': 'application/json'},
-                    #             data=json.dumps(sda_payload),
-                    #             timeout=10
-                    #         )
-                    #
-                    #         if response.status_code == 200:
-                    #             RES.setMessage(RES.getMessage() + ' Invio a SDA riuscito.')
-                    #         else:
-                    #             RES.setMessage(RES.getMessage() + f' Invio a SDA fallito: {response.status_code}')
-                    #             RES.setErrors(response.text)
-                    #     except requests.RequestException as e:
-                    #         RES.setMessage(RES.getMessage() + ' Errore durante invio a SDA.')
-                    #         RES.setErrors(str(e))
-
+                    subject = "Prenotazione Fallita"
+                    body = f"Prenotazione da parte dell'utente {user['username']} non riuscita"
 
                 # Logger.info(Null, "Exception during publish to")
                 except pyodbc.Error:
                     RES.dbError()
 
-
-
-            # # BATOUL
-            # # After successfully inserting the booking, send the data via MQTT
-            # mqtt_data = {
-            #     'message': 'reserve_box',
-            #     'timestamp_start': str(boo['timestamp_start']),
-            #     'id_locker': boo['id_locker'],
-            #     'id_torre': boo['id_torre'],
-            #     'id_cassetto': boo['id_cassetto'],
-            #     'waybill': boo['waybill'],
-            #     'ticket': boo['ticket'],
-            #     'id_causaleprenotazione': boo['id_causaleprenotazione']
-            # }
-            #
-            # mqtt_msg = MQTT_MSG(
-            #     topic=Topics.ToLocker.uniqueLocker + str(boo['id_locker']),
-            #     payload=mqtt_data
-            # )
-            #
-            # mqtt_obj.connect()
-            #
-            # if mqtt_obj.connected:
-            #     mqtt_obj.publish_msg(mqtt_msg)
-            #
-            # if not mqtt_obj.connected or not mqtt_obj.published:
-            #     if not mqtt_obj.connected:
-            #         logger.warning("MQTT NOT CONNECTED")
-            #     if not mqtt_obj.published:
-            #         logger.warning("MQTT MSG NOT PUBLISHED")
-
-
-
             cursor.close()
             connection['connection'].close()
+
+            chimp = email.MailChimp()
+            chimp.send(subject, body, userList)
 
 
         except pyodbc.Error as err:
