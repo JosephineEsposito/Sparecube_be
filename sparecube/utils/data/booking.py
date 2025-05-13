@@ -22,6 +22,7 @@ class Booking():
             self.id_causaleprenotazione     = None
             self.operation_type             = None
             self.id_supervisor              = None
+            self.SDA_Code                   = None
         else:
             # initialize attributes with values from args dictionary (from database)
             self.timestamp_start            = args.get('timestamp_start')
@@ -37,6 +38,7 @@ class Booking():
             self.id_causaleprenotazione     = args.get('id_causaleprenotazione')
             self.operation_type             = args.get('operation_type')
             self.id_supervisor              = args.get('id_supervisor')
+            self.SDA_Code                   = args.get('SDA_Code')
     
     def json(self):
         data = {}
@@ -54,6 +56,8 @@ class Booking():
         if self.id_causaleprenotazione  : data['id_causaleprenotazione']        = self.id_causaleprenotazione
         if self.operation_type          : data['operation_type']                = self.operation_type
         if self.id_supervisor           : data['id_supervisor']                 = self.id_supervisor
+        if self.SDA_Code                : data['SDA_Code']                      = self.SDA_Code
+        else                            : data['SDA_Code']                      = None
 
         return data
     
@@ -69,6 +73,7 @@ class Booking():
         self.id_causaleprenotazione     = None
         self.operation_type             = None
         self.id_supervisor              = None
+        self.SDA_Code                   = None
 
     def base(self):
         return {
@@ -83,6 +88,7 @@ class Booking():
             "id_causaleprenotazione" : 0,
             "operation_type" : 0,
             "id_supervisor" : 0,
+            "SDA_Code" : ""
         }
     
     def query(self, o):
@@ -108,6 +114,8 @@ class Booking():
 
         if "id_supervisor" in o:
             data.append(f"id_supervisor = {o['id_supervisor']}")
+        if "SDA_Code" in o:
+            data.append(f"SDA_Code = \'{o['SDA_Code']}\'")
         
         tmp = []
         for i in range(len(data)):
@@ -143,5 +151,7 @@ class Booking():
         else                            : data['operation_type']                = None
         if self.id_supervisor           : data['id_supervisor']                 = self.id_supervisor
         else                            : data['id_supervisor']                 = None
+        if self.SDA_Code                : data['SDA_Code']                      = self.SDA_Code
+        else                            : data['SDA_Code']                      = None
         return data
 

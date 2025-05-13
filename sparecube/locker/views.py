@@ -1755,7 +1755,7 @@ class BookingsAPIView(APIView):
         bookings = []
         try:
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road
+                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road, P.SDA_Code, P.id_supervisor
                                     from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc
                                     where P.id_cassetto = C.id
                                     and P.id_torre = T.id
@@ -1940,8 +1940,8 @@ class BookLocAPIView(APIView):
         query = []
         try:
             cursor.execute("""
-                            select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket, p.id_utente, p.id_locker, c.id_box as id_cassetto, t.number as id_torre, lc.city, lc.road, p.id_causaleprenotazione
-                            from Prenotazione as p, Localita as lc, Locker as lk, Torre as t, Cassetto as c
+                            select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket, p.id_utente, p.id_locker, c.id_box as id_cassetto, t.number as id_torre, lc.city, lc.road, p.id_causaleprenotazione, p.SDA_Code, p.id_supervisor
+                            from Prenotazione as p, Localita as lc, Locker as lk, Torre as t, Cassetto as c, account_utente as u
                             where p.id_locker = lk.id
                             and lk.localita = lc.id
                             and p.id_torre = t.id
