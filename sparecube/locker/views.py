@@ -1259,105 +1259,6 @@ class BookingAPIView(APIView):
 
         return Response(RES.json(), status=status.HTTP_200_OK)
 
-    ######## OLD VERSION TO UPDATE RESERVATION'S STATUS
-    # def put(self, request):
-    #     # per aggiornare le informazioni di una prenotazione
-    #     RES.clean()
-    #     serializer = self.serializer_class(request.user)
-    #     user = serializer.data
-    #     rBooking = request.data
-    #
-    #     #permissions
-    #     if user["account_type"] != 'OPERATOR': # solo per amministratori?
-    #         RES.permissionDenied()
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #
-    #     #database connection
-    #     connection = db.connectDB()
-    #     if connection['esito'] == -1:
-    #         RES.dbError()
-    #         RES.setErrors(connection['connection'])
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #     cursor = connection['connection'].cursor()
-    #
-    #     #we check if the locker exists in our database
-    #     query = f"select p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, c.id_torre, c.id_box from Prenotazione p, Cassetto c where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id"
-    #     cursor.execute(query)
-    #     res = cursor.fetchone()
-    #     if not res:
-    #         RES.setMessage("La prenotazione che si vuole modificare non esiste.")
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #     else:
-    #         cols = [cols[0] for cols in cursor.description]
-    #         BOO = (dict(zip(cols, res)))
-    #
-    #     prenot = BOO.copy()
-    #
-    #     # Author: @josephineesposito - 27042025
-    #     # AGGIUNTA STRUTTURA MESSAGGIO MQTT
-    #
-    #     mqtt_data = {
-    #         'producer': 'BE',
-    #         'message': 'Setta_Prenotazione',
-    #             'data': {
-    #                 'idTower': prenot['id_torre'],
-    #                 'myBox': {
-    #                     'id': prenot['id_box'],
-    #                     'letteraVettura': prenot['waybill'],
-    #                     'ticket': prenot['ticket'],
-    #                     'id_causaleprenotazione': prenot['id_causaleprenotazione']
-    #                 }
-    #             }
-    #     }
-    #
-    #     print(mqtt_data)
-    #
-    #     mqtt_msg = MQTT_MSG(
-    #         topic=Topics.ToLocker.uniqueLocker + str(BOO['id_locker']),
-    #         payload=mqtt_data
-    #     )
-    #
-    #     mqtt_obj.connect()
-    #
-    #     if mqtt_obj.connected:
-    #         mqtt_obj.publish_msg(mqtt_msg)
-    #
-    #     if not mqtt_obj.connected or not mqtt_obj.published:
-    #         if not mqtt_obj.connected:
-    #             logger.warning("MQTT NOT CONNECTED")
-    #         if not mqtt_obj.published:
-    #             logger.warning("MQTT MSG NOT PUBLISHED")
-    #
-    #         try:
-    #             cursor.execute(
-    #                 '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' and timestamp_end = ? WHERE timestamp_start = ?''',
-    #                 c.get_date(), rBooking['timestamp_start'])
-    #             cursor.commit()
-    #         except pyodbc.Error as err:
-    #             RES.dbError()
-    #             RES.setErrors(str(err))
-    #
-    #     query_s = 'update Prenotazione set '
-    #     query_e = f" where timestamp_start = \'{rBooking['timestamp_start']}\'"
-    #     booking_q = booking.Booking()
-    #     values = booking_q.query(rBooking)
-    #
-    #     query = c.concatenate([query_s, values, query_e])
-    #     print("update query:\n\n")
-    #     print(query)
-    #
-    #     try:
-    #         cursor.execute(query)
-    #         cursor.commit()
-    #         cursor.close()
-    #         connection['connection'].close()
-    #         RES.setMessage('Prenotazione aggiornata con successo.')
-    #     except pyodbc.Error as err:
-    #         RES.dbError()
-    #         RES.setErrors(str(err))
-    #
-    #     return Response(RES.json(), status=status.HTTP_200_OK)
-
     def post(self, request):
         # per aggiungere nuove prenotazioni
         RES.clean()
@@ -1755,7 +1656,7 @@ class BookingsAPIView(APIView):
         bookings = []
         try:
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road
+                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road, P.SDA_Code, P.id_supervisor
                                     from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc
                                     where P.id_cassetto = C.id
                                     and P.id_torre = T.id
@@ -1949,8 +1850,8 @@ class BookLocAPIView(APIView):
         query = []
         try:
             cursor.execute("""
-                            select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket, p.id_utente, p.id_locker, c.id_box as id_cassetto, t.number as id_torre, lc.city, lc.road, p.id_causaleprenotazione
-                            from Prenotazione as p, Localita as lc, Locker as lk, Torre as t, Cassetto as c
+                            select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket, p.id_utente, p.id_locker, c.id_box as id_cassetto, t.number as id_torre, lc.city, lc.road, p.id_causaleprenotazione, p.SDA_Code, p.id_supervisor
+                            from Prenotazione as p, Localita as lc, Locker as lk, Torre as t, Cassetto as c, account_utente as u
                             where p.id_locker = lk.id
                             and lk.localita = lc.id
                             and p.id_torre = t.id

@@ -351,3 +351,56 @@ class PasswordAPIView(APIView):
 
 # endregion
 # ====================.====================.====================.====================.==================== #
+
+# ====================.====================.====================.====================.==================== #
+#region | SUPERVISOR
+
+"""
+Class to manage the supervisor
+GET     - get all supervisors data
+"""
+class SupervisorAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    def get(self, request):
+        # ritorna una lista di tutti gli utenti
+        RES.clean()
+        serializer = self.serializer_class(request.user)
+        user = serializer.data
+
+        # permissions
+        if user["account_type"] == 'USER':
+            RES.permissionDenied()
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        
+        # Connessione al database
+        connection = db.connectDB()
+        if connection['esito'] == -1:
+            RES.dbError()
+            RES.setErrors(str(connection['connection']))
+            return Response(RES.json(), status=status.HTTP_200_OK)
+        cursor = connection['connection'].cursor()
+
+        # query
+        try:
+            accounts = []
+            cursor.execute("SELECT id, first_name, last_name, email, account_type FROM account_utente WHERE account_type = 'SUPERVISOR'")
+            res = cursor.fetchall()
+            if res:
+                cols = [col[0] for col in cursor.description]
+                for row in res:
+                    accounts.append(u.User(dict(zip(cols, row))).json())
+            
+            cursor.close()
+            connection['connection'].close()
+            RES.setData(accounts)
+        
+        except pyodbc.Error as err:
+            RES.dbError()
+            RES.setErrors(str(err))
+        
+        return Response(RES.json(), status=status.HTTP_200_OK)
+
+#endregion
+# ====================.====================.====================.====================.==================== #

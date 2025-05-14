@@ -6,6 +6,7 @@ from .views import (
     CreateUserAPIView,
     LoginUserAPIView,
     PasswordAPIView,
+    SupervisorAPIView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -19,4 +20,7 @@ urlpatterns = [
     path('user/<int:id>',   UpdateUserAPIView.as_view(),        name="update_user"),
     path('user/all/',       UsersAPIView.as_view(),             name="users"),
     path('user/password/',  PasswordAPIView.as_view(),          name="password-recovery"),
+
+    # Supervisor
+    path('user/supervisor/',SupervisorAPIView.as_view(),        name="supervisor"),
 ]
