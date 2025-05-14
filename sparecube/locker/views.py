@@ -257,7 +257,7 @@ class LocationsAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user["account_type"] == 'USER': # solo per amministratori e operatori (limitato)
+        if user["account_type"] == 'USER' or user["account_type"] == 'SUPERVISOR': # solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -617,7 +617,7 @@ class LockersAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user["account_type"] == 'USER': # solo per amministratori e operatori (limitato)
+        if user["account_type"] == 'USER' or user["account_type"] == 'SUPERVISOR' : # solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -764,7 +764,7 @@ class TowersAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user["account_type"] == 'USER': # solo per amministratori e operatori (limitato)
+        if user["account_type"] == 'USER' or user["account_type"] == 'SUPERVISOR': # solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -995,7 +995,7 @@ class DrawersAPIView(APIView):
         user = serializer.data
 
         #permissions
-        if user['account_type'] == 'USER': #solo per amministratori e operatori (limitato)
+        if user['account_type'] == 'USER' or user['account_type'] == 'SUPERVISOR': #solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -1048,7 +1048,7 @@ class DrawerFiltered(APIView):
         user = serializer.data
 
         #permissions
-        if user['account_type'] == 'USER': #solo per amministratori e operatori (limitato)
+        if user['account_type'] == 'USER' or user['account_type'] == 'SUPERVISOR': #solo per amministratori e operatori (limitato)
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
 
@@ -1762,6 +1762,14 @@ class BookingsAPIView(APIView):
                                     and T.id_locker = lk.id
                                     and lk.localita = lc.id
                                     and id_utente = ?""", (user['id'], ))
+            if user['account_type'] == 'SUPERVISOR':
+                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road
+                                                    from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc
+                                                    where P.id_cassetto = C.id
+                                                    and P.id_torre = T.id
+                                                    and T.id_locker = lk.id
+                                                    and lk.localita = lc.id
+                                                    and id_supervisor = ?""", (user['id'],))
             else:
                 cursor.execute("select * from Prenotazione")
             res = cursor.fetchall()
@@ -1800,7 +1808,7 @@ class BookStatusAPIView(APIView):
 
 
         #permissions
-        if user["account_type"] == 'USER': # solo per amministratori e operatori
+        if user["account_type"] == 'USER' or user["account_type"] == 'SUPERVISOR': # solo per amministratori e operatori
             RES.permissionDenied()
             return Response(RES.json(), status=status.HTTP_200_OK)
         
@@ -1832,6 +1840,7 @@ class BookStatusAPIView(APIView):
             RES.setErrors(str(err))
 
         return Response(RES.json(), status=status.HTTP_200_OK)
+
 
 
 #endregion
