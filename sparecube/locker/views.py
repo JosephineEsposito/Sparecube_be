@@ -1853,14 +1853,25 @@ class BookLocAPIView(APIView):
         #query
         query = []
         try:
-            cursor.execute("""
-                            select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket, p.id_utente, p.id_locker, c.id_box as id_cassetto, t.number as id_torre, lc.city, lc.road, p.id_causaleprenotazione, p.SDA_Code, p.id_supervisor
-                            from Prenotazione as p, Localita as lc, Locker as lk, Torre as t, Cassetto as c, account_utente as u
-                            where p.id_locker = lk.id
-                            and lk.localita = lc.id
-                            and p.id_torre = t.id
-                            and p.id_cassetto = c.id
-                            """)
+            # OLD_Query
+            # cursor.execute("""
+            #                 select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket, p.id_utente, p.id_locker, c.id_box as id_cassetto, t.number as id_torre, lc.city, lc.road, p.id_causaleprenotazione, p.SDA_Code, p.id_supervisor
+            #                 from Prenotazione as p, Localita as lc, Locker as lk, Torre as t, Cassetto as c, account_utente as u
+            #                 where p.id_locker = lk.id
+            #                 and lk.localita = lc.id
+            #                 and p.id_torre = t.id
+            #                 and p.id_cassetto = c.id
+            #                 """)
+            cursor.execute("""select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket,  p.id_locker,
+            t.number as id_torre, c.id_box as id_cassetto, loc.city, loc.road, p.id_causaleprenotazione, p.SDA_Code,
+            concat (au.first_name,' ',au.last_name) as operator_name, concat (us.first_name,' ',us.last_name) as supervisor
+            from Prenotazione p
+            join cassetto c on p.id_cassetto = c.id
+            join torre t on c.id_torre = t.id
+            join locker l on t.id_locker = l.id
+            join Localita loc on l.localita = loc.id
+            join account_utente au on p.id_utente = au.id
+            join account_utente us on p.id_supervisor = us.id""")
             res = cursor.fetchall()
 
             if res:
