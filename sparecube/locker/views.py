@@ -1415,10 +1415,14 @@ class BookingAPIView(APIView):
             column_names = [desc[0] for desc in cursor.description]
             lockerLoc = dict(zip(column_names, row))
 
+            address = lockerLoc['road']
+
+            if lockerLoc['civicnumber'] > 0:
+                address = f"{lockerLoc['road']}, {lockerLoc['civicnumber']}"
+
             userList = [user_data, supervisor_user]
 
             subject = "Nuova Prenotazione"
-
 
             body = (
                 f"L'utente {user_data['first_name'].capitalize()} {user_data['last_name'].capitalize()} ha inserito una nuova prenotazione:<br><br>"
@@ -1426,7 +1430,7 @@ class BookingAPIView(APIView):
                 f"- Ticket: {boo['ticket']}<br><br>"
                 "Locker assegnato:<br>"
                 f"Locker Nr.{boo['id_locker']}<br>"
-                f"{lockerLoc['road']}<br>"
+                f"{address}<br>"
                 f"{lockerLoc['postalcode']}<br>"
                 f"{lockerLoc['city']} ({lockerLoc['provincia']})"
             )
