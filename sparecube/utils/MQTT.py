@@ -28,8 +28,8 @@ class Topics:
         pass
     # Class for declaration the topics that should be received by the Locker
     class ToLocker:
-        uniqueLocker: str = "lockers/locker:"
-        broadcast: str = "Lockers"
+        uniqueLocker: str = "Lockers/Locker:"
+        broadcast: str = "Lockers/#"
 # endregion
 
 
