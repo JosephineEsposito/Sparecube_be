@@ -1666,8 +1666,8 @@ class BookingsAPIView(APIView):
                                     and P.id_torre = T.id
                                     and T.id_locker = lk.id
                                     and lk.localita = lc.id
-                                    and id_utente = ?""", (user['id'], ))
-            if user['account_type'] == 'SUPERVISOR':
+                                    and P.id_utente = ?""", (user['id'],))
+            elif user['account_type'] == 'SUPERVISOR':
                 cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road
                                                     from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc
                                                     where P.id_cassetto = C.id
