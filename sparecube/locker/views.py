@@ -1422,13 +1422,13 @@ class BookingAPIView(APIView):
 
             userList = [user_data, supervisor_user]
 
-            subject = "Nuova Prenotazione"
+            subject = f"Prenotazione (L.Vettura: {boo['waybill']} - Ticket: {boo['ticket']})"
 
             body = (
                 f"L'utente {user_data['first_name'].capitalize()} {user_data['last_name'].capitalize()} ha inserito una nuova prenotazione:<br><br>"
                 f"- Lettera di vettura: {boo['waybill']}<br>"
-                f"- Ticket: {boo['ticket']}<br><br>"
-                "Locker assegnato:<br>"
+                f"- Ticket: {boo['ticket']}<br><br><br>"
+                "Locker assegnato:<br><br>"
                 f"Locker Nr.{boo['id_locker']}<br>"
                 f"{address}<br>"
                 f"{lockerLoc['postalcode']}<br>"
