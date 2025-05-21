@@ -1660,7 +1660,7 @@ class BookingsAPIView(APIView):
         bookings = []
         try:
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road, P.SDA_Code, P.id_supervisor
+                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road, P.SDA_Code, concat (us.first_name,' ',us.last_name) as supervisor
                                     from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc
                                     where P.id_cassetto = C.id
                                     and P.id_torre = T.id
@@ -1683,6 +1683,7 @@ class BookingsAPIView(APIView):
                 cols = [cols[0] for cols in cursor.description]
                 for row in res:
                     BOO = booking.Booking(dict(zip(cols, row)))
+                    BOO.clean_timestamp()
                     bookings.append(BOO.json())
             cursor.close()
             connection['connection'].close()
@@ -1880,6 +1881,8 @@ class BookLocAPIView(APIView):
                 
                 for row in res:
                     booking_data = dict(zip(cols, row))
+                    booking_data['timestamp_start'] = booking_data['timestamp_start'].split('.')[0]
+                    booking_data['timestamp_end'] = booking_data['timestamp_end'].split('.')[0]
                     query.append(booking_data)
 
             cursor.close()

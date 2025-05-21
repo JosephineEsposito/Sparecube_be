@@ -154,4 +154,15 @@ class Booking():
         if self.SDA_Code                : data['SDA_Code']                      = self.SDA_Code
         else                            : data['SDA_Code']                      = None
         return data
+    
+    def clean_timestamp(self):
+        timestamp_start = self.timestamp_start
+        timestamp_end = self.timestamp_end
+
+        if timestamp_start:
+            cleaned_timestamp_start = timestamp_start.split('.')[0]
+            self.timestamp_start = cleaned_timestamp_start
+        if timestamp_end:
+            cleaned_timestamp_end = timestamp_end.split('.')[0]
+            self.timestamp_end = cleaned_timestamp_end
 
