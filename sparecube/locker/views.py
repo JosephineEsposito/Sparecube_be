@@ -1661,7 +1661,7 @@ class BookingsAPIView(APIView):
         try:
             if user['account_type'] == 'OPERATOR':
                 cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road, P.SDA_Code, concat (us.first_name,' ',us.last_name) as supervisor
-                                    from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc
+                                    from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc, account_utente as us
                                     where P.id_cassetto = C.id
                                     and P.id_torre = T.id
                                     and T.id_locker = lk.id
