@@ -1881,8 +1881,8 @@ class BookLocAPIView(APIView):
                 
                 for row in res:
                     booking_data = dict(zip(cols, row))
-                    booking_data['timestamp_start'] = booking_data['timestamp_start'].split('.')[0]
-                    booking_data['timestamp_end'] = booking_data['timestamp_end'].split('.')[0]
+                    if booking_data['timestamp_start'] : booking_data['timestamp_start'] = booking_data['timestamp_start'].split('.')[0]
+                    if booking_data['timestamp_end']   : booking_data['timestamp_end']   = booking_data['timestamp_end'].split('.')[0]
                     query.append(booking_data)
 
             cursor.close()
