@@ -1660,13 +1660,20 @@ class BookingsAPIView(APIView):
         bookings = []
         try:
             if user['account_type'] == 'OPERATOR':
-                cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road, P.SDA_Code, concat (us.first_name,' ',us.last_name) as supervisor
-                                    from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc, account_utente as us
-                                    where P.id_cassetto = C.id
-                                    and P.id_torre = T.id
-                                    and T.id_locker = lk.id
-                                    and lk.localita = lc.id
-                                    and P.id_utente = ?""", (user['id'],))
+                cursor.execute("""
+                    SELECT P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket,
+                        P.id_locker, T.number AS id_torre, C.id_box AS id_cassetto,
+                        lc.city, lc.road, P.SDA_Code,
+                        CONCAT(us.first_name, ' ', us.last_name) AS supervisor
+                    FROM Prenotazione P
+                    JOIN Cassetto C ON P.id_cassetto = C.id
+                    JOIN Torre T ON P.id_torre = T.id
+                    JOIN Locker lk ON T.id_locker = lk.id
+                    JOIN Localita lc ON lk.localita = lc.id
+                    LEFT JOIN account_utente us ON P.id_supervisore = us.id  -- Presumo ci sia questa relazione
+                    WHERE P.id_utente = ?
+                """, (user['id'],))
+
             elif user['account_type'] == 'SUPERVISOR':
                 cursor.execute("""select P.timestamp_start, P.timestamp_end, P.id_causaleprenotazione, P.waybill, P.ticket, P.id_locker, T.number as id_torre, C.id_box as id_cassetto, lc.city, lc.road
                                                     from Prenotazione as P, Torre as T, Cassetto as C, Locker as lk, Localita as lc

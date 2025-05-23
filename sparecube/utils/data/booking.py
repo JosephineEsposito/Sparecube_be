@@ -21,7 +21,7 @@ class Booking():
             self.id_cassetto                = None
             self.id_causaleprenotazione     = None
             self.operation_type             = None
-            self.id_supervisor              = None
+            self.supervisor              = None
             self.SDA_Code                   = None
         else:
             # initialize attributes with values from args dictionary (from database)
@@ -37,7 +37,7 @@ class Booking():
             self.id_cassetto                = args.get('id_cassetto')
             self.id_causaleprenotazione     = args.get('id_causaleprenotazione')
             self.operation_type             = args.get('operation_type')
-            self.id_supervisor              = args.get('id_supervisor')
+            self.supervisor              = args.get('supervisor')
             self.SDA_Code                   = args.get('SDA_Code')
     
     def json(self):
@@ -55,7 +55,7 @@ class Booking():
         if self.id_cassetto             : data['id_cassetto']                   = self.id_cassetto
         if self.id_causaleprenotazione  : data['id_causaleprenotazione']        = self.id_causaleprenotazione
         if self.operation_type          : data['operation_type']                = self.operation_type
-        if self.id_supervisor           : data['id_supervisor']                 = self.id_supervisor
+        if self.supervisor           : data['supervisor']                 = self.supervisor
         if self.SDA_Code                : data['SDA_Code']                      = self.SDA_Code
         else                            : data['SDA_Code']                      = None
 
@@ -72,7 +72,7 @@ class Booking():
         self.id_cassetto                = None
         self.id_causaleprenotazione     = None
         self.operation_type             = None
-        self.id_supervisor              = None
+        self.supervisor              = None
         self.SDA_Code                   = None
 
     def base(self):
@@ -87,7 +87,7 @@ class Booking():
             "id_cassetto" : 0,
             "id_causaleprenotazione" : 0,
             "operation_type" : 0,
-            "id_supervisor" : 0,
+            "supervisor" : 0,
             "SDA_Code" : ""
         }
     
@@ -112,8 +112,8 @@ class Booking():
         if "operation_type" in o:
             data.append(f"operation_type = {o['operation_type']}")
 
-        if "id_supervisor" in o:
-            data.append(f"id_supervisor = {o['id_supervisor']}")
+        if "supervisor" in o:
+            data.append(f"supervisor = {o['supervisor']}")
         if "SDA_Code" in o:
             data.append(f"SDA_Code = \'{o['SDA_Code']}\'")
         
@@ -149,8 +149,8 @@ class Booking():
         else                            : data['id_causaleprenotazione']        = None
         if self.operation_type          : data['operation_type']                = self.operation_type
         else                            : data['operation_type']                = None
-        if self.id_supervisor           : data['id_supervisor']                 = self.id_supervisor
-        else                            : data['id_supervisor']                 = None
+        if self.supervisor           : data['supervisor']                 = self.supervisor
+        else                            : data['supervisor']                 = None
         if self.SDA_Code                : data['SDA_Code']                      = self.SDA_Code
         else                            : data['SDA_Code']                      = None
         return data
