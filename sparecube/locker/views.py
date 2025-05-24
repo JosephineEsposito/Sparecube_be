@@ -1731,7 +1731,7 @@ class BookLocAPIView(APIView):
             #                 and p.id_cassetto = c.id
             #                 """)
             cursor.execute("""select p.timestamp_start, p.timestamp_end, p.waybill, p.ticket,  p.id_locker,
-            t.number as id_torre, c.id_box as id_cassetto, loc.city, loc.road, p.id_causaleprenotazione, p.SDA_Code,
+            t.number as id_torre, c.id_box as id_cassetto, loc.city, loc.road, p.id_causaleprenotazione, p.SDA_Code, au.id as id_utente,
             concat (au.first_name,' ',au.last_name) as operator_name, concat (us.first_name,' ',us.last_name) as supervisor
             from Prenotazione p
             join cassetto c on p.id_cassetto = c.id
