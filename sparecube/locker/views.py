@@ -1370,8 +1370,6 @@ class BookingAPIView(APIView):
             RES.setMessage('waybill and unique.')
             return Response(RES.json(), status=status.HTTP_200_OK)
 
-
-
         # we get the tower number
         try:
             cursor.execute(f"select number from Torre where id = {boo['id_torre']}")
@@ -1379,24 +1377,18 @@ class BookingAPIView(APIView):
 
             id_torre = res[0] if res else None
 
-
             cursor.execute(f"select id_box from Cassetto where id = {boo['id_cassetto']}")
             res = cursor.fetchone()
             id_box = res[0] if res else None
-
 
             if res:
                 cols = [cols[0] for cols in cursor.description]
                 print(dict(zip(cols, res)))
 
-
         except pyodbc.Error as err:
             RES.dbError()
             RES.setResult(-1)
             RES.setErrors(str(err))
-
-
-
 
         # we insert the data into the database
         try:
@@ -1404,7 +1396,6 @@ class BookingAPIView(APIView):
                                      values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'],
                            boo['id_torre'], boo['id_cassetto'], boo['timestamp_end'], boo['waybill'], boo['ticket'],
                            user_data['id'], boo['id_causaleprenotazione'], boo['operation_type'], supervisor_user.id)
-
 
             cursor.commit()
             RES.setResult(0)
@@ -1435,7 +1426,6 @@ class BookingAPIView(APIView):
                 f"{lockerLoc['city']} ({lockerLoc['provincia']})"
             )
 
-
             if not To_Lockers_MSGs.addReservMQTTMsg(boo, id_torre, id_box):
                 try:
                     cursor.execute(
@@ -1457,142 +1447,12 @@ class BookingAPIView(APIView):
             chimp = email.MailChimp()
             chimp.send(subject, body, userList)
 
-
         except pyodbc.Error as err:
             RES.dbError()
             RES.setResult(-1)
             RES.setErrors(str(err))
 
         return Response(RES.json(), status=status.HTTP_200_OK)
-
-
-    ########## OLD VERSION TO POST NEW RESERVATION
-    # def post(self, request):
-    #     # per aggiungere nuove prenotazioni
-    #     RES.clean()
-    #     serializer = self.serializer_class(request.user)
-    #     user = serializer.data
-    #     rBooking = request.data
-    #
-    #     # permissions -> tutti i profili possono creare una prenotazione
-    #     """
-    #     if user['account_type'] < 1: #amministratore only?
-    #         RES.permissionDenied()
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #     """
-    #
-    #     # database connection
-    #     connection = db.connectDB()
-    #     if connection['esito'] == -1:
-    #         RES.dbError()
-    #         RES.setErrors(connection['connection'])
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #     cursor = connection['connection'].cursor()
-    #
-    #     # variables
-    #     db_booking = booking.Booking()
-    #     db_booking = db_booking.base()
-    #
-    #     timestamp = c.get_date()
-    #
-    #     # query
-    #     cursor.execute(f"select * from Prenotazione where timestamp_start = \'{timestamp}\'")
-    #     res = cursor.fetchone()
-    #     if res:
-    #         RES.setMessage('Esiste già una prenotazione con questo timestamp_start.')
-    #         RES.setResult(-1)
-    #         return Response(RES.json(), status=status.HTTP_200_OK)
-    #
-    #     # we convert and check the values to the correct ones!
-    #     boo = booking.Booking(rBooking)
-    #     boo = boo.validate()
-    #
-    #     # variables
-    #     boo['timestamp_start'] = c.get_date()
-    #
-    #     # we get the tower number
-    #     try:
-    #         cursor.execute(f"select number from Torre where id = {boo['id_torre']}")
-    #         res = cursor.fetchone()
-    #
-    #         if res:
-    #             cols = [cols[0] for cols in cursor.description]
-    #             print(dict(zip(cols, res)))
-    #
-    #     except pyodbc.Error as err:
-    #         RES.dbError()
-    #         RES.setResult(-1)
-    #         RES.setErrors(str(err))
-    #
-    #
-    #     # we insert the data into the database
-    #     try:
-    #         cursor.execute('''insert into Prenotazione (timestamp_start, id_locker, id_torre, id_cassetto, timestamp_end, waybill, ticket, id_utente, id_causaleprenotazione)
-    #                               values(?, ?, ?, ?, ?, ?, ?, ?, ?)''', boo['timestamp_start'], boo['id_locker'],
-    #                        boo['id_torre'], boo['id_cassetto'], boo['timestamp_end'], boo['waybill'], boo['ticket'],
-    #                        user['id'], boo['id_causaleprenotazione'])
-    #
-    #         cursor.commit()
-    #
-    #         RES.setResult(0)
-    #         RES.setMessage('Prenotazione inserita.')
-    #
-    #         # BATOUL
-    #         # MICHELE 270425
-    #         # MODIFICATA STRUTTURA MESSAGGIO MQTT
-    #
-    #         mqtt_data = {
-    #             'producer': 'BE',
-    #             'message': 'Setta_Prenotazione',
-    #                 'data': {
-    #                     'idTower': rBooking['id_torre'],
-    #                     'myBox': {
-    #                         'id': rBooking['id_box'],
-    #                         'letteraVettura': boo['waybill'],
-    #                         'ticket': boo['ticket'],
-    #                         'id_causaleprenotazione': boo['id_causaleprenotazione']
-    #                     }
-    #                 }
-    #         }
-    #
-    #         print(mqtt_data)
-    #
-    #         mqtt_msg = MQTT_MSG(
-    #             topic=Topics.ToLocker.uniqueLocker + str(boo['id_locker']),
-    #             payload=mqtt_data
-    #         )
-    #
-    #         mqtt_obj.connect()
-    #
-    #         if mqtt_obj.connected:
-    #             mqtt_obj.publish_msg(mqtt_msg)
-    #
-    #         if not mqtt_obj.connected or not mqtt_obj.published:
-    #             if not mqtt_obj.connected:
-    #                 logger.warning("MQTT NOT CONNECTED")
-    #             if not mqtt_obj.published:
-    #                 logger.warning("MQTT MSG NOT PUBLISHED")
-    #
-    #             try:
-    #                 cursor.execute(
-    #                     '''UPDATE Prenotazione SET id_causaleprenotazione = 'FAILED' WHERE id_locker = ? and id_torre = ? and id_cassetto = ? and timestamp_end = ?''',
-    #                     boo['id_locker'], boo['id_torre'], boo['id_cassetto'], c.get_date())
-    #                 cursor.commit()
-    #             # Logger.info(Null, "Exception during publish to")
-    #             except pyodbc.Error:
-    #                 RES.dbError()
-    #
-    #         cursor.close()
-    #         connection['connection'].close()
-    #
-    #
-    #     except pyodbc.Error as err:
-    #         RES.dbError()
-    #         RES.setResult(-1)
-    #         RES.setErrors(str(err))
-    #
-    #     return Response(RES.json(), status=status.HTTP_200_OK)
-
     
     def delete(self,request, id):
         # per eliminare una prenotazione
@@ -1670,7 +1530,7 @@ class BookingsAPIView(APIView):
                     JOIN Torre T ON P.id_torre = T.id
                     JOIN Locker lk ON T.id_locker = lk.id
                     JOIN Localita lc ON lk.localita = lc.id
-                    LEFT JOIN account_utente us ON P.id_supervisore = us.id  -- Presumo ci sia questa relazione
+                    LEFT JOIN account_utente us ON P.id_supervisor = us.id
                     WHERE P.id_utente = ?
                 """, (user['id'],))
 
