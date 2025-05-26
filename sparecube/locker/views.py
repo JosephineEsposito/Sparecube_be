@@ -1169,7 +1169,6 @@ class BookingAPIView(APIView):
         rBooking = request.data
 
 
-
         #permissions
         if user["account_type"] != 'OPERATOR': # solo per amministratori?
 
@@ -1184,28 +1183,11 @@ class BookingAPIView(APIView):
             return Response(RES.json(), status=status.HTTP_200_OK)
         cursor = connection['connection'].cursor()
 
-
-        # # We need to save backup of this reservation to manage failed publishing mqtt msg
-        # # region Reservation Backup
-        # cursor.execute('select * from Prenotazione where timestamp_start = ?', (rBooking['timestamp_start']))
-        # res = cursor.fetchone()
-        # if not res:
-        #     RES.setMessage("La prenotazione che si vuole modificare non esiste.")
-        #     return Response(RES.json(), status=status.HTTP_200_OK)
-        # cols = [cols[0] for cols in cursor.description]
-        # BOOTemp = booking.Booking(dict(zip(cols, res)))
-        # status_temp = BOOTemp.id_causaleprenotazione
-        # timestamp_start_temp = BOOTemp.timestamp_start
-        # # endregion
-
-
-        # we check if the locker exists in our database
-
         #we check if the locker exists in our database
-
-        query = f"select c.is_full, p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, t.number as id_torre, c.id_box from Prenotazione p, Cassetto c, Torre t where timestamp_start = \'{rBooking['timestamp_start']}\' and p.id_cassetto = c.id and p.id_torre = t.id"
+        query = f"select c.is_full, p.id_locker, p.waybill, p.ticket, p.id_causaleprenotazione, t.number as id_torre, c.id_box from Prenotazione p, Cassetto c, Torre t where timestamp_start like \'%{rBooking['timestamp_start']}%\' and p.id_cassetto = c.id and p.id_torre = t.id"
         cursor.execute(query)
         res = cursor.fetchone()
+
         if not res:
             RES.setMessage("La prenotazione che si vuole modificare non esiste.")
             return Response(RES.json(), status=status.HTTP_200_OK)
@@ -1223,23 +1205,16 @@ class BookingAPIView(APIView):
         prenot = BOO.copy()
 
         try:
-            # cursor.execute("update Prenotazione set id_causaleprenotazione = ? where timestamp_start = ?",
-            #                (rBooking['id_causaleprenotazione'], rBooking['timestamp_start']))
-
             if prenot['is_full'] == True:
                 RES.setResult(0)
                 RES.setMessage('The Box is full ')
                 print('The Box is full ')
                 return Response(RES.json(), status=status.HTTP_200_OK)
 
-
-
-
             if To_Lockers_MSGs.cancelReservMQTTMsg(prenot):
-                cursor.execute("update Prenotazione set id_causaleprenotazione = ? where timestamp_start = ?",
-                               (rBooking['id_causaleprenotazione'], rBooking['timestamp_start']))
-                # cursor.execute("update Prenotazione set id_causaleprenotazione = ? where  timestamp_start = ?",
-                #                (status_temp, timestamp_start_temp))
+                query = f"update Prenotazione set id_causaleprenotazione = \'{rBooking['id_causaleprenotazione']}\' where timestamp_start like \'%{rBooking['timestamp_start']}%\'"
+                cursor.execute(query)
+                
                 RES.setResult(0)
                 RES.setMessage('Prenotazione aggiornata con successo.')
 
@@ -1247,6 +1222,7 @@ class BookingAPIView(APIView):
                 RES.setResult(0)
                 RES.setMessage('Prenotazione NON aggiornata con successo.')
 
+            print(RES.json())
             cursor.commit()
             cursor.close()
             connection['connection'].close()
@@ -1257,6 +1233,7 @@ class BookingAPIView(APIView):
             RES.setResult(-1)
             RES.setErrors(str(err))
 
+        print(RES.json())
         return Response(RES.json(), status=status.HTTP_200_OK)
 
     def post(self, request):
