@@ -89,24 +89,53 @@ class MQTTManager:
 
         self.client.tls_insecure_set(True)  # Set to False in production with valid CA certs
 
+
+
     def connect(self) -> bool:
-        print ("[MQTT] Connect: Start")
+        print("[MQTT] Connect: Start")
 
         for url, port, label in self.brokers:
+            if not url or not port:
+                continue
+
             try:
                 logger.info(f"Attempting MQTT connection to {label} broker at {url}:{port}")
+                print(f"Attempting MQTT connection to {label} broker at {url}:{port}")
                 resultConn = self.client.connect(url, port)
-                logger.info(f"MQTT connected successfully to {label} broker.")
+                print("[MQTT] resultConn: ", resultConn)
+
                 if resultConn == 0:
+                    logger.info(f"MQTT connected successfully to {label} broker.")
+                    print(f"MQTT connected successfully to {label} broker.")
                     print("[MQTT] Connect: OK")
                     return True
+                else:
+                    logger.warning(f"Connection attempt to {label} broker failed with result code {resultConn}")
+
             except Exception as e:
                 logger.warning(f"Failed to connect to {label} broker: {e}")
-                print("[MQTT] Connect: ERROR")
-                return False
 
-        print("[MQTT] Connect: ERROR")
+        print("[MQTT] Connect: ERROR Connecting to both servers")
         return False
+
+    # def connect(self) -> bool:
+    #     print ("[MQTT] Connect: Start")
+    #
+    #     for url, port, label in self.brokers:
+    #         try:
+    #             logger.info(f"Attempting MQTT connection to {label} broker at {url}:{port}")
+    #             resultConn = self.client.connect(url, port)
+    #             logger.info(f"MQTT connected successfully to {label} broker.")
+    #             if resultConn == 0:
+    #                 print("[MQTT] Connect: OK")
+    #                 return True
+    #         except Exception as e:
+    #             logger.warning(f"Failed to connect to {label} broker: {e}")
+    #             print("[MQTT] Connect: ERROR")
+    #             return False
+    #
+    #     print("[MQTT] Connect: ERROR")
+    #     return False
 
 
 
@@ -125,6 +154,7 @@ class MQTTManager:
             return True
         else:
             return False
+
 
 
 
