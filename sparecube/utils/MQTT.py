@@ -90,7 +90,6 @@ class MQTTManager:
         self.client.tls_insecure_set(True)  # Set to False in production with valid CA certs
 
 
-
     def connect(self) -> bool:
         print("[MQTT] Connect: Start")
 
